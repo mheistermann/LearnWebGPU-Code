@@ -23,12 +23,15 @@ struct MyUniforms {
 fn vs_main(in: VertexInput) -> VertexOutput {
 	var out: VertexOutput;
 	let ratio = 640.0 / 480.0;
-	var position = in.position;
-	var c = cos(uMyUniforms.time);
-	var s = sin(uMyUniforms.time);
-	let tmp = mat2x2(c, s, -s, c) * position.yz;
-	position.y = tmp.x;
-	position.z = tmp.y;
+	let angle = uMyUniforms.time; // you can multiply it go rotate faster
+	// The correct mixing weights are given by the trigonometric functions cosine and sine
+	let alpha = cos(angle);
+	let beta = sin(angle);
+	var position = vec3<f32>(
+		in.position.x,
+		alpha * in.position.y + beta * in.position.z, // add a bit of Z in Y...
+		alpha * in.position.z - beta * in.position.y, // ...and a bit of Y in Z.
+	);
 	out.position = vec4<f32>(position.x, position.y * ratio, position.z * 0.5 + 0.5, 1.0);
 	out.color = in.color;
 	return out;

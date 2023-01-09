@@ -190,18 +190,26 @@ int main (int, char**) {
 	fragmentState.targetCount = 1;
 	fragmentState.targets = &colorTarget;
 	
-	DepthStencilState depthStencilState;
-	depthStencilState.setDefault();
-	depthStencilState.depthBias = 0;
-	depthStencilState.depthBiasClamp = 0.0f;
-	depthStencilState.depthBiasSlopeScale = 1.0f;
+	// Setup the Z-Buffer algorithm options
+	DepthStencilState depthStencilState = Default;
+
+	// A fragment is blended only if its depth is **less** than the current
+	// value of the Z-Buffer.
 	depthStencilState.depthCompare = CompareFunction::Less;
+
+	// Once a fragment passes the depth test, its depth is stored as the new
+	// value of the Z-Buffer.
 	depthStencilState.depthWriteEnabled = true;
-	depthStencilState.format = TextureFormat::Depth24Plus;
-	depthStencilState.stencilBack.compare = CompareFunction::Never;
-	depthStencilState.stencilFront.compare = CompareFunction::Never;
+
+	// We tell the pipeline how the depth values of the Z-Buffer are encoded in memory.
+	// Store the format in a variable as later parts of the code depend on it
+	TextureFormat depthTextureFormat = TextureFormat::Depth24Plus;
+	depthStencilState.format = depthTextureFormat;
+
+	// Deactivate the stencil alltogether
 	depthStencilState.stencilReadMask = 0;
 	depthStencilState.stencilWriteMask = 0;
+
 	pipelineDesc.depthStencil = &depthStencilState;
 
 	pipelineDesc.multisample.count = 1;
@@ -282,18 +290,19 @@ int main (int, char**) {
 	bindGroupDesc.entries = &binding;
 	BindGroup bindGroup = device.createBindGroup(bindGroupDesc);
 
-	TextureFormat depthTextureFormat = TextureFormat::Depth24Plus;
+	// Create the depth texture
 	TextureDescriptor depthTextureDesc;
 	depthTextureDesc.dimension = TextureDimension::_2D;
 	depthTextureDesc.format = depthTextureFormat;
 	depthTextureDesc.mipLevelCount = 1;
 	depthTextureDesc.sampleCount = 1;
-	depthTextureDesc.size = {640, 480, 1};
+	depthTextureDesc.size = { 640, 480, 1 };
 	depthTextureDesc.usage = TextureUsage::RenderAttachment;
 	depthTextureDesc.viewFormatCount = 1;
 	depthTextureDesc.viewFormats = (WGPUTextureFormat*)&depthTextureFormat;
 	Texture depthTexture = device.createTexture(depthTextureDesc);
 
+	// Create the view of the depth texture manipulated by the rasterizer
 	TextureViewDescriptor depthTextureViewDesc;
 	depthTextureViewDesc.aspect = TextureAspect::DepthOnly;
 	depthTextureViewDesc.baseArrayLayer = 0;
@@ -333,15 +342,22 @@ int main (int, char**) {
 		renderPassDesc.colorAttachments = &colorAttachment;
 
 		RenderPassDepthStencilAttachment depthStencilAttachment;
+		// The view of the depth texture
 		depthStencilAttachment.view = depthTextureView;
+
+		// The initial value of the depth buffer, meaning "far"
 		depthStencilAttachment.depthClearValue = 100.0f;
+		// Operation settings comparable to the color attachment
 		depthStencilAttachment.depthLoadOp = LoadOp::Clear;
-		depthStencilAttachment.depthReadOnly = false;
 		depthStencilAttachment.depthStoreOp = StoreOp::Store;
+		// we could turn off writing to the depth buffer globally here
+		depthStencilAttachment.depthReadOnly = false;
+
+		// Stencil setup, mandatory but unused
 		depthStencilAttachment.stencilClearValue = 0;
 		depthStencilAttachment.stencilLoadOp = LoadOp::Clear;
-		depthStencilAttachment.stencilReadOnly = true;
 		depthStencilAttachment.stencilStoreOp = StoreOp::Store;
+		depthStencilAttachment.stencilReadOnly = true;
 
 		renderPassDesc.depthStencilAttachment = &depthStencilAttachment;
 		renderPassDesc.timestampWriteCount = 0;
