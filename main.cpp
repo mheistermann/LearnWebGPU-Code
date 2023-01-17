@@ -44,16 +44,20 @@
 
 using namespace wgpu;
 namespace fs = std::filesystem;
-using glm::mat4;
+using glm::mat4x4;
+using glm::vec4;
+using glm::vec3;
+
+constexpr float PI = 3.14159265358979323846f;
 
 /**
  * The same structure as in the shader, replicated in C++
  */
 struct MyUniforms {
-	mat4 projectionMatrix;
-	mat4 viewMatrix;
-	mat4 modelMatrix;
-	std::array<float, 4> color;
+	mat4x4 projectionMatrix;
+	mat4x4 viewMatrix;
+	mat4x4 modelMatrix;
+	vec4 color;
 	float time;
 	float _pad[3];
 };
@@ -282,9 +286,80 @@ int main(int, char**) {
 	MyUniforms uniforms;
 	uniforms.time = 1.0f;
 	uniforms.color = { 0.0f, 1.0f, 0.4f, 1.0f };
-	uniforms.projectionMatrix = glm::perspective(45.0f, 640.0f / 480.0f, 0.001f, 100.0f);
-	uniforms.viewMatrix = mat4(1.0);
-	uniforms.modelMatrix = mat4(1.0);
+	
+	// Option A: Manually define matrices
+	// Scale the object
+	mat4x4 S = transpose(mat4x4(
+		0.3, 0.0, 0.0, 0.0,
+		0.0, 0.3, 0.0, 0.0,
+		0.0, 0.0, 0.3, 0.0,
+		0.0, 0.0, 0.0, 1.0
+	));
+
+	// Translate the object
+	mat4x4 T1 = transpose(mat4x4(
+		1.0, 0.0, 0.0, 0.5,
+		0.0, 1.0, 0.0, 0.0,
+		0.0, 0.0, 1.0, 0.0,
+		0.0, 0.0, 0.0, 1.0
+	));
+
+	// Translate the view
+	vec3 focalPoint(0.0, 0.0, -2.0);
+	mat4x4 T2 = transpose(mat4x4(
+		1.0, 0.0, 0.0, -focalPoint.x,
+		0.0, 1.0, 0.0, -focalPoint.y,
+		0.0, 0.0, 1.0, -focalPoint.z,
+		0.0, 0.0, 0.0, 1.0
+	));
+
+	// Rotate the object
+	float angle1 = 2.0f; // arbitrary time
+	float c1 = cos(angle1);
+	float s1 = sin(angle1);
+	mat4x4 R1 = transpose(mat4x4(
+		c1, s1, 0.0, 0.0,
+		-s1, c1, 0.0, 0.0,
+		0.0, 0.0, 1.0, 0.0,
+		0.0, 0.0, 0.0, 1.0
+		));
+
+	// Rotate the view point
+	float angle2 = 3.0f * PI / 4.0f;
+	float c2 = cos(angle2);
+	float s2 = sin(angle2);
+	mat4x4 R2 = transpose(mat4x4(
+		1.0, 0.0, 0.0, 0.0,
+		0.0, c2, s2, 0.0,
+		0.0, -s2, c2, 0.0,
+		0.0, 0.0, 0.0, 1.0
+	));
+
+	uniforms.modelMatrix = R1 * T1 * S;
+	uniforms.viewMatrix = T2 * R2;
+
+	float ratio = 640.0f / 480.0f;
+	float focalLength = 2.0;
+	float near = 0.01f;
+	float far = 100.0f;
+	float divider = 1 / (focalLength * (far - near));
+	uniforms.projectionMatrix = transpose(mat4x4(
+		1.0, 0.0, 0.0, 0.0,
+		0.0, ratio, 0.0, 0.0,
+		0.0, 0.0, far * divider, -far * near * divider,
+		0.0, 0.0, 1.0 / focalLength, 0.0
+	));
+
+	// Option B: Use GLM extensions
+	S = glm::scale(mat4x4(1.0), vec3(0.3f));
+	T1 = glm::translate(mat4x4(1.0), vec3(0.5, 0.0, 0.0));
+	R1 = glm::rotate(mat4x4(1.0), angle1, vec3(0.0, 0.0, 1.0));
+	uniforms.viewMatrix = R1 * T1 * S;
+	R2 = glm::rotate(mat4x4(1.0), -angle2, vec3(1.0, 0.0, 0.0));
+	T2 = glm::translate(mat4x4(1.0), -focalPoint);
+	uniforms.viewMatrix = T2 * R2;
+	//glm::perspective(2 * 45.0f * PI / 180.0f, 640.0f / 480.0f, 0.001f, 100.0f);
+
 	queue.writeBuffer(uniformBuffer, 0, &uniforms, sizeof(MyUniforms));
 
 	// Create a binding

@@ -24,12 +24,12 @@ struct MyUniforms {
 
 let pi = 3.14159266;
 
-@vertex
-fn vs_main(in: VertexInput) -> VertexOutput {
-	var out: VertexOutput;
-	let ratio = 640.0 / 480.0;
-	var position = in.position;
-	
+
+/**
+ * Option A: Rebuild the matrices for each vertex
+ * (not recommended)
+ */
+fn vs_main_optionA(in: VertexInput) -> VertexOutput {
 	// Scale the object
 	let S = transpose(mat4x4<f32>(
 		0.3,  0.0, 0.0, 0.0,
@@ -39,15 +39,15 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 	));
 
 	// Translate the object
-	let T = transpose(mat4x4<f32>(
+	let T1 = transpose(mat4x4<f32>(
 		1.0,  0.0, 0.0, 0.5,
 		0.0,  1.0, 0.0,  0.0,
 		0.0,  0.0, 1.0,  0.0,
 		0.0,  0.0, 0.0,  1.0,
 	));
 
-	// Rotate the view point
-	let angle1 = uMyUniforms.time;
+	// Rotate the object
+	let angle1 = 2.0;//uMyUniforms.time; // 2.0;//
 	let c1 = cos(angle1);
 	let s1 = sin(angle1);
 	let R1 = transpose(mat4x4<f32>(
@@ -56,6 +56,8 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 		0.0, 0.0, 1.0, 0.0,
 		0.0, 0.0, 0.0, 1.0,
 	));
+
+	// Change the view angle
 	let angle2 = 3.0 * pi / 4.0;
 	let c2 = cos(angle2);
 	let s2 = sin(angle2);
@@ -66,14 +68,50 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 		0.0, 0.0, 0.0, 1.0,
 	));
 
-	var position4 = vec4<f32>(position, 1.0);
-	position = (R2 * R1 * T * S * position4).xyz;
+	// Move the view point
+	let focalPoint = vec3<f32>(0.0, 0.0, -2.0);
+	let T2 = transpose(mat4x4<f32>(
+		1.0,  0.0, 0.0, -focalPoint.x,
+		0.0,  1.0, 0.0, -focalPoint.y,
+		0.0,  0.0, 1.0, -focalPoint.z,
+		0.0,  0.0, 0.0,     1.0,
+	));
 
-	// Project on the XY plane and apply ratio
-	out.position = vec4<f32>(position.x, position.y * ratio, position.z * 0.5 + 0.5, 1.0);
-	//out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * vec4<f32>(position.x, position.y, -(position.z + 2.0), 1.0);
+	let focalLength = 2.0;
+	let near = 0.01;
+	let far = 100.0;
+	let ratio = 640.0 / 480.0;
+	// (no need for a scale parameter now that we have focalLength)
+	let divider = 1.0 / (focalLength * (far - near));
+	let P = transpose(mat4x4<f32>(
+		1.0,  0.0,        0.0,                  0.0,
+		0.0, ratio,       0.0,                  0.0,
+		0.0,  0.0,    far * divider,   -far * near * divider,
+		0.0,  0.0,  1.0 / focalLength,          0.0,
+	));
+
+	var out: VertexOutput;
+	var homogeneous_position = vec4<f32>(in.position, 1.0);
+	out.position = P * T2 * R2 * R1 * T1 * S * homogeneous_position;
 	out.color = in.color;
 	return out;
+}
+
+/**
+ * Option B: Use matrices that have been precomputed and stored in the uniform buffer
+ * (recommended)
+ */
+fn vs_main_optionB(in: VertexInput) -> VertexOutput {
+	var out: VertexOutput;
+	out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vec4<f32>(in.position, 1.0);
+	out.color = in.color;
+	return out;
+}
+
+@vertex
+fn vs_main(in: VertexInput) -> VertexOutput {
+	//return vs_main_optionA(in);
+	return vs_main_optionB(in);
 }
 
 @fragment
