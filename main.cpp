@@ -31,6 +31,8 @@
 #include <webgpu.hpp>
 #include <wgpu.h> // wgpuTextureViewDrop
 
+#define GLM_FORCE_LEFT_HANDED
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 
@@ -354,11 +356,26 @@ int main(int, char**) {
 	S = glm::scale(mat4x4(1.0), vec3(0.3f));
 	T1 = glm::translate(mat4x4(1.0), vec3(0.5, 0.0, 0.0));
 	R1 = glm::rotate(mat4x4(1.0), angle1, vec3(0.0, 0.0, 1.0));
-	uniforms.viewMatrix = R1 * T1 * S;
+	uniforms.modelMatrix = R1 * T1 * S;
+
 	R2 = glm::rotate(mat4x4(1.0), -angle2, vec3(1.0, 0.0, 0.0));
 	T2 = glm::translate(mat4x4(1.0), -focalPoint);
 	uniforms.viewMatrix = T2 * R2;
-	//glm::perspective(2 * 45.0f * PI / 180.0f, 640.0f / 480.0f, 0.001f, 100.0f);
+
+	// Option C: A different way of using GLM extensions
+	mat4x4 M(1.0);
+	M = glm::rotate(M, angle1, vec3(0.0, 0.0, 1.0));
+	M = glm::translate(M, vec3(0.5, 0.0, 0.0));
+	M = glm::scale(M, vec3(0.3f));
+	uniforms.modelMatrix = M;
+
+	mat4x4 V(1.0);
+	V = glm::translate(V, -focalPoint);
+	V = glm::rotate(V, -angle2, vec3(1.0, 0.0, 0.0));
+	uniforms.viewMatrix = V;
+	
+	float fov = 2 * 45.0f * PI / 180.0f;
+	uniforms.projectionMatrix = glm::perspective(fov, ratio, near, far);
 
 	queue.writeBuffer(uniformBuffer, 0, &uniforms, sizeof(MyUniforms));
 
