@@ -31,6 +31,7 @@
 #include <webgpu.hpp>
 #include <wgpu.h> // wgpuTextureViewDrop
 
+#define GLM_FORCE_LEFT_HANDED
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
@@ -45,30 +46,21 @@
 
 using namespace wgpu;
 namespace fs = std::filesystem;
-using glm::mat4;
+using glm::mat4x4;
+using glm::vec4;
+using glm::vec3;
 
-/**
- * The same structure as in the shader, replicated in C++
- */
+constexpr float PI = 3.14159265358979323846f;
+
 struct MyUniforms {
-	mat4 projectionMatrix;
-	mat4 viewMatrix;
-	mat4 modelMatrix;
-	std::array<float, 4> color;
+	mat4x4 projectionMatrix;
+	mat4x4 viewMatrix;
+	mat4x4 modelMatrix;
+	vec4 color;
 	float time;
 	float _pad[3];
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
-
-/**
- * A structure that describes the data layout in the vertex buffer
- * We do not instantiate it but use it in `sizeof` and `offsetof`
- */
-struct VertexAttributes {
-	std::array<float, 3> position;
-	std::array<float, 3> normal;
-	std::array<float, 3> color;
-};
 
 ShaderModule loadShaderModule(const fs::path& path, Device device);
 bool loadGeometry(const fs::path& path, std::vector<float>& pointData, std::vector<uint16_t>& indexData, int dimensions);
@@ -102,7 +94,7 @@ int main(int, char**) {
 
 	std::cout << "Requesting device..." << std::endl;
 	RequiredLimits requiredLimits = Default;
-	requiredLimits.limits.maxVertexAttributes = 3;
+	requiredLimits.limits.maxVertexAttributes = 2;
 	requiredLimits.limits.maxVertexBuffers = 1;
 	requiredLimits.limits.maxBindGroups = 1;
 	requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
@@ -154,27 +146,22 @@ int main(int, char**) {
 	RenderPipelineDescriptor pipelineDesc{};
 
 	// Vertex fetch
-	std::vector<VertexAttribute> vertexAttribs(3);
+	std::vector<VertexAttribute> vertexAttribs(2);
 
 	// Position attribute
 	vertexAttribs[0].shaderLocation = 0;
 	vertexAttribs[0].format = VertexFormat::Float32x3;
-	vertexAttribs[0].offset = offsetof(VertexAttributes, position);
-
-	// Normal attribute
-	vertexAttribs[1].shaderLocation = 1;
-	vertexAttribs[1].format = VertexFormat::Float32x3;
-	vertexAttribs[1].offset = offsetof(VertexAttributes, normal);
+	vertexAttribs[0].offset = 0;
 
 	// Color attribute
-	vertexAttribs[2].shaderLocation = 2;
-	vertexAttribs[2].format = VertexFormat::Float32x3;
-	vertexAttribs[2].offset = offsetof(VertexAttributes, color);
+	vertexAttribs[1].shaderLocation = 1;
+	vertexAttribs[1].format = VertexFormat::Float32x3;
+	vertexAttribs[1].offset = 3 * sizeof(float);
 
 	VertexBufferLayout vertexBufferLayout;
 	vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 	vertexBufferLayout.attributes = vertexAttribs.data();
-	vertexBufferLayout.arrayStride = sizeof(VertexAttributes);
+	vertexBufferLayout.arrayStride = 6 * sizeof(float);
 	vertexBufferLayout.stepMode = VertexStepMode::Vertex;
 
 	pipelineDesc.vertex.bufferCount = 1;
@@ -215,12 +202,24 @@ int main(int, char**) {
 
 	// Setup the Z-Buffer algorithm options
 	DepthStencilState depthStencilState = Default;
+
+	// A fragment is blended only if its depth is **less** than the current
+	// value of the Z-Buffer.
 	depthStencilState.depthCompare = CompareFunction::Less;
+
+	// Once a fragment passes the depth test, its depth is stored as the new
+	// value of the Z-Buffer.
 	depthStencilState.depthWriteEnabled = true;
+
+	// We tell the pipeline how the depth values of the Z-Buffer are encoded in memory.
+	// Store the format in a variable as later parts of the code depend on it
 	TextureFormat depthTextureFormat = TextureFormat::Depth24Plus;
 	depthStencilState.format = depthTextureFormat;
+
+	// Deactivate the stencil alltogether
 	depthStencilState.stencilReadMask = 0;
 	depthStencilState.stencilWriteMask = 0;
+
 	pipelineDesc.depthStencil = &depthStencilState;
 
 	pipelineDesc.multisample.count = 1;
@@ -286,9 +285,26 @@ int main(int, char**) {
 	MyUniforms uniforms;
 	uniforms.time = 1.0f;
 	uniforms.color = { 0.0f, 1.0f, 0.4f, 1.0f };
-	uniforms.projectionMatrix = glm::perspective(45.0f, 640.0f / 480.0f, 0.001f, 100.0f);
-	uniforms.viewMatrix = mat4(1.0);
-	uniforms.modelMatrix = mat4(1.0);
+
+	float angle1 = 2.0f;
+	mat4x4 S = glm::scale(mat4x4(1.0), vec3(0.3f));
+	mat4x4 T1 = glm::translate(mat4x4(1.0), vec3(0.5, 0.0, 0.0));
+	mat4x4 R1 = glm::rotate(mat4x4(1.0), angle1, vec3(0.0, 0.0, 1.0));
+	uniforms.modelMatrix = R1 * T1 * S;
+
+	float angle2 = 3.0f * PI / 4.0f;
+	vec3 focalPoint(0.0, 0.0, -2.0);
+	mat4x4 R2 = glm::rotate(mat4x4(1.0), -angle2, vec3(1.0, 0.0, 0.0));
+	mat4x4 T2 = glm::translate(mat4x4(1.0), -focalPoint);
+	uniforms.viewMatrix = T2 * R2;
+
+	float ratio = 640.0f / 480.0f;
+	float near = 0.01f;
+	float far = 100.0f;
+	float focalLength = 2.0f; 
+	float fov = 2 * glm::atan(1 / focalLength);
+	uniforms.projectionMatrix = glm::perspective(fov, ratio, near, far);
+
 	queue.writeBuffer(uniformBuffer, 0, &uniforms, sizeof(MyUniforms));
 
 	// Create a binding
@@ -356,11 +372,18 @@ int main(int, char**) {
 		renderPassDesc.colorAttachments = &colorAttachment;
 
 		RenderPassDepthStencilAttachment depthStencilAttachment;
+		// The view of the depth texture
 		depthStencilAttachment.view = depthTextureView;
+
+		// The initial value of the depth buffer, meaning "far"
 		depthStencilAttachment.depthClearValue = 100.0f;
+		// Operation settings comparable to the color attachment
 		depthStencilAttachment.depthLoadOp = LoadOp::Clear;
 		depthStencilAttachment.depthStoreOp = StoreOp::Store;
+		// we could turn off writing to the depth buffer globally here
 		depthStencilAttachment.depthReadOnly = false;
+
+		// Stencil setup, mandatory but unused
 		depthStencilAttachment.stencilClearValue = 0;
 		depthStencilAttachment.stencilLoadOp = LoadOp::Clear;
 		depthStencilAttachment.stencilStoreOp = StoreOp::Store;
