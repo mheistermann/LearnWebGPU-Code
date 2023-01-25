@@ -374,7 +374,7 @@ int main(int, char**) {
 	V = glm::rotate(V, -angle2, vec3(1.0, 0.0, 0.0));
 	uniforms.viewMatrix = V;
 	
-	float fov = 2 * 45.0f * PI / 180.0f;
+	float fov = 2 * glm::atan(1 / focalLength);
 	uniforms.projectionMatrix = glm::perspective(fov, ratio, near, far);
 
 	queue.writeBuffer(uniformBuffer, 0, &uniforms, sizeof(MyUniforms));
