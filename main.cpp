@@ -62,6 +62,16 @@ struct MyUniforms {
 };
 static_assert(sizeof(MyUniforms) % 16 == 0);
 
+/**
+ * A structure that describes the data layout in the vertex buffer
+ * We do not instantiate it but use it in `sizeof` and `offsetof`
+ */
+struct VertexAttributes {
+	vec3 position;
+	vec3 normal;
+	vec3 color;
+};
+
 ShaderModule loadShaderModule(const fs::path& path, Device device);
 bool loadGeometry(const fs::path& path, std::vector<float>& pointData, std::vector<uint16_t>& indexData, int dimensions);
 
@@ -94,7 +104,8 @@ int main(int, char**) {
 
 	std::cout << "Requesting device..." << std::endl;
 	RequiredLimits requiredLimits = Default;
-	requiredLimits.limits.maxVertexAttributes = 2;
+	requiredLimits.limits.maxVertexAttributes = 3;
+	//                                          ^ This was a 2
 	requiredLimits.limits.maxVertexBuffers = 1;
 	requiredLimits.limits.maxBindGroups = 1;
 	requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
@@ -146,22 +157,28 @@ int main(int, char**) {
 	RenderPipelineDescriptor pipelineDesc{};
 
 	// Vertex fetch
-	std::vector<VertexAttribute> vertexAttribs(2);
+	std::vector<VertexAttribute> vertexAttribs(3);
+	//                                         ^ This was a 2
 
 	// Position attribute
 	vertexAttribs[0].shaderLocation = 0;
 	vertexAttribs[0].format = VertexFormat::Float32x3;
-	vertexAttribs[0].offset = 0;
+	vertexAttribs[0].offset = offsetof(VertexAttributes, position);
 
-	// Color attribute
+	// Normal attribute
 	vertexAttribs[1].shaderLocation = 1;
 	vertexAttribs[1].format = VertexFormat::Float32x3;
-	vertexAttribs[1].offset = 3 * sizeof(float);
+	vertexAttribs[1].offset = offsetof(VertexAttributes, normal);
+
+	// Color attribute
+	vertexAttribs[2].shaderLocation = 2;
+	vertexAttribs[2].format = VertexFormat::Float32x3;
+	vertexAttribs[2].offset = offsetof(VertexAttributes, color);
 
 	VertexBufferLayout vertexBufferLayout;
 	vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
 	vertexBufferLayout.attributes = vertexAttribs.data();
-	vertexBufferLayout.arrayStride = 6 * sizeof(float);
+	vertexBufferLayout.arrayStride = sizeof(VertexAttributes);
 	vertexBufferLayout.stepMode = VertexStepMode::Vertex;
 
 	pipelineDesc.vertex.bufferCount = 1;
@@ -253,6 +270,7 @@ int main(int, char**) {
 	std::vector<uint16_t> indexData;
 
 	bool success = loadGeometry(RESOURCE_DIR "/pyramid.txt", pointData, indexData, 6 /* dimensions */);
+	//                                                                             ^ This was a 3
 	if (!success) {
 		std::cerr << "Could not load geometry!" << std::endl;
 		return 1;
@@ -286,22 +304,25 @@ int main(int, char**) {
 	uniforms.time = 1.0f;
 	uniforms.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 
+	// Model matrix
 	float angle1 = 2.0f;
 	mat4x4 S = glm::scale(mat4x4(1.0), vec3(0.3f));
 	mat4x4 T1 = glm::translate(mat4x4(1.0), vec3(0.5, 0.0, 0.0));
 	mat4x4 R1 = glm::rotate(mat4x4(1.0), angle1, vec3(0.0, 0.0, 1.0));
 	uniforms.modelMatrix = R1 * T1 * S;
 
+	// View matrix
 	float angle2 = 3.0f * PI / 4.0f;
 	vec3 focalPoint(0.0, 0.0, -2.0);
 	mat4x4 R2 = glm::rotate(mat4x4(1.0), -angle2, vec3(1.0, 0.0, 0.0));
 	mat4x4 T2 = glm::translate(mat4x4(1.0), -focalPoint);
 	uniforms.viewMatrix = T2 * R2;
 
+	// Projection matrix
 	float ratio = 640.0f / 480.0f;
 	float near = 0.01f;
 	float far = 100.0f;
-	float focalLength = 2.0f; 
+	float focalLength = 2.0f;
 	float fov = 2 * glm::atan(1 / focalLength);
 	uniforms.projectionMatrix = glm::perspective(fov, ratio, near, far);
 
@@ -349,6 +370,12 @@ int main(int, char**) {
 		// Update uniform buffer
 		uniforms.time = static_cast<float>(glfwGetTime());
 		queue.writeBuffer(uniformBuffer, offsetof(MyUniforms, time), &uniforms.time, sizeof(MyUniforms::time));
+
+		// Update view matrix
+		angle1 = uniforms.time;
+		R1 = glm::rotate(mat4x4(1.0), angle1, vec3(0.0, 0.0, 1.0));
+		uniforms.modelMatrix = R1 * T1 * S;
+		queue.writeBuffer(uniformBuffer, offsetof(MyUniforms, modelMatrix), &uniforms.modelMatrix, sizeof(MyUniforms::modelMatrix));
 
 		TextureView nextTexture = swapChain.getCurrentTextureView();
 		if (!nextTexture) {
