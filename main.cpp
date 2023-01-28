@@ -30,6 +30,9 @@
 #define TINYOBJLOADER_IMPLEMENTATION // add this to exactly 1 of your C++ files
 #include "tiny_obj_loader.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #define WEBGPU_CPP_IMPLEMENTATION
 #include <webgpu.hpp>
 #include <wgpu.h> // wgpuTextureViewDrop
@@ -79,6 +82,7 @@ struct VertexAttributes {
 
 ShaderModule loadShaderModule(const fs::path& path, Device device);
 bool loadGeometryFromObj(const fs::path& path, std::vector<VertexAttributes>& vertexData);
+Texture loadTexture(const fs::path& path, Device device);
 
 int main(int, char**) {
 	Instance instance = createInstance(InstanceDescriptor{});
@@ -277,7 +281,7 @@ int main(int, char**) {
 	std::vector<VertexAttributes> vertexData;
 	std::vector<uint16_t> indexData;
 
-	bool success = loadGeometryFromObj(RESOURCE_DIR "/cube.obj", vertexData);
+	bool success = loadGeometryFromObj(RESOURCE_DIR "/fourareen.obj", vertexData);
 	if (!success) {
 		std::cerr << "Could not load geometry!" << std::endl;
 		return 1;
@@ -334,46 +338,7 @@ int main(int, char**) {
 	depthTextureViewDesc.format = depthTextureFormat;
 	TextureView depthTextureView = depthTexture.createView(depthTextureViewDesc);
 
-	// Create a texture
-	TextureDescriptor textureDesc;
-	textureDesc.dimension = TextureDimension::_2D;
-	textureDesc.format = TextureFormat::RGBA8Unorm;
-	textureDesc.mipLevelCount = 1;
-	textureDesc.sampleCount = 1;
-	textureDesc.size = { 256, 256, 1 };
-	textureDesc.usage = TextureUsage::TextureBinding | TextureUsage::CopyDst;
-	textureDesc.viewFormatCount = 0;
-	textureDesc.viewFormats = nullptr;
-	Texture texture = device.createTexture(textureDesc);
-
-	// Create image data
-	std::vector<uint8_t> pixels(4 * textureDesc.size.width * textureDesc.size.height);
-	for (uint32_t i = 0; i < textureDesc.size.width; ++i) {
-		for (uint32_t j = 0; j < textureDesc.size.height; ++j) {
-			uint8_t* p = &pixels[4 * (j * textureDesc.size.width + i)];
-			p[0] = (i / 16) % 2 == (j / 16) % 2 ? 255 : 0; // r
-			p[1] = ((i - j) / 16) % 2 == 0 ? 255 : 0; // g
-			p[2] = ((i + j) / 16) % 2 == 0 ? 255 : 0; // b
-			p[3] = 255; // a
-		}
-	}
-
-	// Arguments telling which part of the texture we upload to
-	// (together with the last argument of writeTexture)
-	ImageCopyTexture destination;
-	destination.texture = texture;
-	destination.mipLevel = 0;
-	destination.origin = { 0, 0, 0 };
-	destination.aspect = TextureAspect::All;
-
-	// Arguments telling how the C++ side pixel memory is laid out
-	TextureDataLayout source;
-	source.offset = 0;
-	source.bytesPerRow = 4 * textureDesc.size.width;
-	source.rowsPerImage = textureDesc.size.height;
-
-	// Upload data to the GPU texture
-	queue.writeTexture(destination, pixels.data(), pixels.size(), source, textureDesc.size);
+	Texture texture = loadTexture(RESOURCE_DIR "/fourareen2K_albedo.jpg", device);
 
 	// Create texture view for the shader.
 	TextureViewDescriptor textureViewDesc;
@@ -383,7 +348,7 @@ int main(int, char**) {
 	textureViewDesc.baseMipLevel = 0;
 	textureViewDesc.mipLevelCount = 1;
 	textureViewDesc.dimension = TextureViewDimension::_2D;
-	textureViewDesc.format = textureDesc.format;
+	textureViewDesc.format = TextureFormat::RGBA8Unorm;
 	TextureView textureView = texture.createView(textureViewDesc);
 
 	// Create a sampler
@@ -561,10 +526,44 @@ bool loadGeometryFromObj(const fs::path& path, std::vector<VertexAttributes>& ve
 
 			vertexData[offset + i].uv = {
 				attrib.texcoords[2 * idx.texcoord_index + 0],
-				attrib.texcoords[2 * idx.texcoord_index + 1]
+				1 - attrib.texcoords[2 * idx.texcoord_index + 1]
 			};
 		}
 	}
 
 	return true;
+}
+
+Texture loadTexture(const fs::path& path, Device device) {
+	int width, height, channels;
+	unsigned char *pixelData = stbi_load(path.string().c_str(), &width, &height, &channels, 4 /* force 4 channels */);
+	if (nullptr == pixelData) return nullptr;
+
+	TextureDescriptor textureDesc;
+	textureDesc.dimension = TextureDimension::_2D;
+	textureDesc.format = TextureFormat::RGBA8Unorm;
+	textureDesc.mipLevelCount = 1;
+	textureDesc.sampleCount = 1;
+	textureDesc.size = { (unsigned int)width, (unsigned int)height, 1 };
+	textureDesc.usage = TextureUsage::TextureBinding | TextureUsage::CopyDst;
+	textureDesc.viewFormatCount = 0;
+	textureDesc.viewFormats = nullptr;
+	Texture texture = device.createTexture(textureDesc);
+
+	ImageCopyTexture destination;
+	destination.texture = texture;
+	destination.mipLevel = 0;
+	destination.origin = { 0, 0, 0 };
+	destination.aspect = TextureAspect::All;
+
+	TextureDataLayout source;
+	source.offset = 0;
+	source.bytesPerRow = 4 * textureDesc.size.width;
+	source.rowsPerImage = textureDesc.size.height;
+
+	device.getQueue().writeTexture(destination, pixelData, 4 * width * height, source, textureDesc.size);
+
+	stbi_image_free(pixelData);
+
+	return texture;
 }
