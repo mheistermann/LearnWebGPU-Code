@@ -74,7 +74,7 @@ struct VertexAttributes {
 	vec3 position;
 	vec3 normal;
 	vec3 color;
-	vec2 uv;
+	vec2 uv; // new UV attribute
 };
 
 ShaderModule loadShaderModule(const fs::path& path, Device device);
@@ -110,6 +110,7 @@ int main(int, char**) {
 	std::cout << "Requesting device..." << std::endl;
 	RequiredLimits requiredLimits = Default;
 	requiredLimits.limits.maxVertexAttributes = 4;
+	//                                          ^ This was a 3
 	requiredLimits.limits.maxVertexBuffers = 1;
 	requiredLimits.limits.maxBindGroups = 1;
 	requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
@@ -162,6 +163,7 @@ int main(int, char**) {
 
 	// Vertex fetch
 	std::vector<VertexAttribute> vertexAttribs(4);
+	//                                         ^ This was a 3
 
 	// Position attribute
 	vertexAttribs[0].shaderLocation = 0;
@@ -178,7 +180,7 @@ int main(int, char**) {
 	vertexAttribs[2].format = VertexFormat::Float32x3;
 	vertexAttribs[2].offset = offsetof(VertexAttributes, color);
 
-	// UV attribute
+	// New UV attribute
 	vertexAttribs[3].shaderLocation = 3;
 	vertexAttribs[3].format = VertexFormat::Float32x2;
 	vertexAttribs[3].offset = offsetof(VertexAttributes, uv);
@@ -300,7 +302,7 @@ int main(int, char**) {
 	uniforms.time = 1.0f;
 	uniforms.color = { 0.0f, 1.0f, 0.4f, 1.0f };
 
-	// Matrices
+	// Matrices, using the glm::lookAt helper
 	uniforms.modelMatrix = mat4x4(1.0);
 	uniforms.viewMatrix = glm::lookAt(vec3(-2.0f, -3.0f, 2.0f), vec3(0.0f), vec3(0, 0, 1));
 	uniforms.projectionMatrix = glm::perspective(45 * PI / 180, 640.0f / 480.0f, 0.01f, 100.0f);
@@ -538,9 +540,11 @@ bool loadGeometryFromObj(const fs::path& path, std::vector<VertexAttributes>& ve
 				attrib.colors[3 * idx.vertex_index + 2]
 			};
 
+			// When loading UV coordinates, we must convert from OBJ coordinate
+			// system to the WebGPU one by mirroring the V axis.
 			vertexData[offset + i].uv = {
 				attrib.texcoords[2 * idx.texcoord_index + 0],
-				attrib.texcoords[2 * idx.texcoord_index + 1]
+				1 - attrib.texcoords[2 * idx.texcoord_index + 1]
 			};
 		}
 	}
