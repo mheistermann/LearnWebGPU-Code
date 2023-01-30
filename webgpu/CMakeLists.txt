@@ -9,7 +9,7 @@ add_library(webgpu SHARED IMPORTED GLOBAL)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-	set(WGPU_RUNTIME_LIB ${WGPU}/windows-${ARCH}/wgpu_native.dll PARENT_SCOPE)
+	set(WGPU_RUNTIME_LIB ${WGPU}/windows-${ARCH}/wgpu_native.dll)
 	set_target_properties(
 		webgpu
 		PROPERTIES
@@ -20,7 +20,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
-	set(WGPU_RUNTIME_LIB ${WGPU}/linux-${ARCH}/libwgpu.so PARENT_SCOPE)
+
+	set(WGPU_RUNTIME_LIB ${WGPU}/linux-${ARCH}/libwgpu.so)
 	set_target_properties(
 		webgpu
 		PROPERTIES
@@ -30,7 +31,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
-	set(WGPU_RUNTIME_LIB ${WGPU}/macos-${ARCH}/libwgpu.dylib PARENT_SCOPE)
+	set(WGPU_RUNTIME_LIB ${WGPU}/macos-${ARCH}/libwgpu.dylib)
 	set_target_properties(
 		webgpu
 		PROPERTIES
@@ -44,9 +45,13 @@ else()
 
 endif()
 
+message(STATUS "Using WebGPU runtime from '${WGPU_RUNTIME_LIB}'")
+set(WGPU_RUNTIME_LIB ${WGPU_RUNTIME_LIB} PARENT_SCOPE)
+
 # The application's binary must find wgpu.dll or libwgpu.so at runtime,
 # so we automatically copy it (it's called WGPU_RUNTIME_LIB in general)
 # next to the binary.
+# Also make sure that the binarie's RPATH is set to find this shared library.
 function(target_copy_webgpu_binaries Target)
 	add_custom_command(
 		TARGET ${Target} POST_BUILD
@@ -55,4 +60,5 @@ function(target_copy_webgpu_binaries Target)
 			${WGPU_RUNTIME_LIB}
 			$<TARGET_FILE_DIR:${Target}>
 	)
+	set_target_properties(${Target} PROPERTIES INSTALL_RPATH "./")
 endfunction()
