@@ -11,9 +11,11 @@ include(utils.cmake)
 # when distributing it.
 option(DEV_MODE "Set up development helper settings" ON)
 
-add_subdirectory(webgpu)
 if (NOT EMSCRIPTEN)
 	add_subdirectory(glfw)
+endif()
+add_subdirectory(webgpu)
+if (NOT EMSCRIPTEN)
 	add_subdirectory(glfw3webgpu)
 endif()
 add_subdirectory(imgui)

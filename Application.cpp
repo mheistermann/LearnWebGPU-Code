@@ -48,6 +48,7 @@
 #endif
 
 #ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
 #include <emscripten/html5_webgpu.h>
 #endif
 
@@ -102,6 +103,13 @@ bool Application::onInit() {
 		return false;
 	}
 
+	// Add window callbacks
+	glfwSetWindowUserPointer(m_window, this);
+	glfwSetFramebufferSizeCallback(m_window, onWindowResize);
+	glfwSetCursorPosCallback(m_window, onWindowMouseMove);
+	glfwSetMouseButtonCallback(m_window, onWindowMouseButton);
+	glfwSetScrollCallback(m_window, onWindowScroll);
+
 #ifdef __EMSCRIPTEN__
 	m_device = emscripten_webgpu_get_device();
 
@@ -121,13 +129,6 @@ bool Application::onInit() {
 		std::cerr << "Could not initialize WebGPU!" << std::endl;
 		return false;
 	}
-
-	// Add window callbacks
-	glfwSetWindowUserPointer(m_window, this);
-	glfwSetFramebufferSizeCallback(m_window, onWindowResize);
-	glfwSetCursorPosCallback(m_window, onWindowMouseMove);
-	glfwSetMouseButtonCallback(m_window, onWindowMouseButton);
-	glfwSetScrollCallback(m_window, onWindowScroll);
 
 	// Create surface and adapter
 	std::cout << "Requesting adapter..." << std::endl;
@@ -471,6 +472,8 @@ void Application::onFrame() {
 #if defined(WEBGPU_BACKEND_DAWN)
 	constexpr auto NaN = std::numeric_limits<double>::quiet_NaN();
 	colorAttachment.clearColor = Color{ NaN, NaN, NaN, NaN };
+	colorAttachment.clearValue = Color{ 0.256, 0.256, 0.256, 1.0 };
+#elif defined(WEBGPU_BACKEND_EMSCRIPTEN)
 	colorAttachment.clearValue = Color{ 0.256, 0.256, 0.256, 1.0 };
 #else
 	colorAttachment.clearValue = Color{ 0.05, 0.05, 0.05, 1.0 };
