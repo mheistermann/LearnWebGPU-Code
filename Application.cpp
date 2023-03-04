@@ -164,6 +164,11 @@ bool Application::onInit() {
 		if (message) std::cout << " (message: " << message << ")";
 		std::cout << std::endl;
 	});
+	m_deviceLostCallback = m_device.setDeviceLostCallback([](DeviceLostReason reason, char const* message) {
+		std::cout << "Device lost: reason " << reason;
+		if (message) std::cout << " (message: " << message << ")";
+		std::cout << std::endl;
+	});
 
 	Queue queue = m_device.getQueue();
 
@@ -283,6 +288,7 @@ bool Application::onInit() {
 
 	// Create a bind group layout
 	BindGroupLayoutDescriptor bindGroupLayoutDesc{};
+	bindGroupLayoutDesc.label = "main bind group";
 	bindGroupLayoutDesc.entryCount = (uint32_t)bindingLayoutEntries.size();
 	bindGroupLayoutDesc.entries = bindingLayoutEntries.data();
 	BindGroupLayout bindGroupLayout = m_device.createBindGroupLayout(bindGroupLayoutDesc);
@@ -360,7 +366,7 @@ bool Application::onInit() {
 	Sampler sampler = m_device.createSampler(samplerDesc);
 
 	// Create a binding
-	std::vector<BindGroupEntry> bindings(3);
+	std::vector<BindGroupEntry> bindings(3, Default);
 	//                                   ^ This was a 2
 
 	bindings[0].binding = 0;
@@ -483,12 +489,12 @@ void Application::onFrame() {
 	depthStencilAttachment.depthStoreOp = StoreOp::Store;
 	depthStencilAttachment.depthReadOnly = false;
 	depthStencilAttachment.stencilClearValue = 0;
-#if defined(WEBGPU_BACKEND_DAWN)
-	depthStencilAttachment.stencilLoadOp = LoadOp::Undefined;
-	depthStencilAttachment.stencilStoreOp = StoreOp::Undefined;
-#else
+#if defined(WEBGPU_BACKEND_WGPU)
 	depthStencilAttachment.stencilLoadOp = LoadOp::Clear;
 	depthStencilAttachment.stencilStoreOp = StoreOp::Store;
+#else
+	depthStencilAttachment.stencilLoadOp = LoadOp::Undefined;
+	depthStencilAttachment.stencilStoreOp = StoreOp::Undefined;
 #endif
 	depthStencilAttachment.stencilReadOnly = true;
 
@@ -514,12 +520,16 @@ void Application::onFrame() {
 #if defined(WEBGPU_BACKEND_WGPU)
 	wgpuTextureViewDrop(nextTexture);
 #endif
+#if !defined(WEBGPU_BACKEND_EMSCRIPTEN)
 	m_swapChain.present();
+#endif
 }
 
 void Application::onFinish() {
 	m_texture.destroy();
+	m_texture = nullptr;
 	m_depthTexture.destroy();
+	m_depthTexture = nullptr;
 
 	glfwDestroyWindow(m_window);
 	glfwTerminate();

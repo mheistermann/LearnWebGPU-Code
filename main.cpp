@@ -36,13 +36,13 @@ int main(int, char**) {
 
 #ifdef __EMSCRIPTEN__
 
-    emscripten_request_animation_frame_loop(
-        [](double /* time */, void *userData) -> EM_BOOL {
+    emscripten_set_main_loop_arg(
+        [](void *userData) {
             Application& app = *reinterpret_cast<Application*>(userData);
             app.onFrame();
-            return EM_TRUE;
         },
-        (void*)&app
+        (void*)&app,
+        0, true
     );
 
 #else // __EMSCRIPTEN__
@@ -50,9 +50,9 @@ int main(int, char**) {
 	while (app.isRunning()) {
 		app.onFrame();
 	}
+	app.onFinish();
 
 #endif // __EMSCRIPTEN__
 
-	app.onFinish();
 	return 0;
 }

@@ -99,6 +99,7 @@ private:
 	std::vector<ResourceManager::VertexAttributes> m_vertexData;
 	int m_indexCount;
 	std::unique_ptr<wgpu::ErrorCallback> m_uncapturedErrorCallback;
+	std::unique_ptr<wgpu::DeviceLostCallback> m_deviceLostCallback;
 
 	struct CameraState {
 		// angles.x is the rotation of the camera around the global vertical axis, affected by mouse.x
