@@ -165,13 +165,13 @@ bool Application::onInit() {
 
 	BufferDescriptor bufferDesc;
 	bufferDesc.size = m_tetVerts.size() * sizeof(m_tetVerts.front());
-	bufferDesc.usage = BufferUsage::CopyDst | BufferUsage::Uniform;
+	bufferDesc.usage = BufferUsage::CopyDst | BufferUsage::Storage;
 	bufferDesc.mappedAtCreation = false;
 	m_tetVertBuffer = m_device.createBuffer(bufferDesc);
 	queue.writeBuffer(m_tetVertBuffer, 0, m_tetVerts.data(), bufferDesc.size);
 
 	bufferDesc.size = m_vertices.size() * sizeof(m_vertices.front());
-	bufferDesc.usage = BufferUsage::CopyDst | BufferUsage::Uniform;
+	bufferDesc.usage = BufferUsage::CopyDst | BufferUsage::Storage;
 	bufferDesc.mappedAtCreation = false;
 	m_vertexBuffer = m_device.createBuffer(bufferDesc);
 	queue.writeBuffer(m_vertexBuffer, 0, m_vertices.data(), bufferDesc.size);
@@ -203,7 +203,7 @@ bool Application::onInit() {
 	buildDepthBuffer();
 
 	// Create binding layout
-	m_bindingLayoutEntries.resize(2, Default);
+	m_bindingLayoutEntries.resize(3, Default);
 
 	BindGroupLayoutEntry& bindingLayout = m_bindingLayoutEntries[0];
 	bindingLayout.binding = 0;
@@ -214,8 +214,14 @@ bool Application::onInit() {
 	BindGroupLayoutEntry& vertexPosBindingLayout = m_bindingLayoutEntries[1];
 	vertexPosBindingLayout.binding = 1;
 	vertexPosBindingLayout.visibility = ShaderStage::Vertex | ShaderStage::Fragment;
-	vertexPosBindingLayout.buffer.type = BufferBindingType::Uniform;
+	vertexPosBindingLayout.buffer.type = BufferBindingType::ReadOnlyStorage;
 	vertexPosBindingLayout.buffer.minBindingSize = m_vertices.size() * sizeof(m_vertices.front());
+
+	BindGroupLayoutEntry& tetVertsBindingLayout = m_bindingLayoutEntries[2];
+	tetVertsBindingLayout.binding = 2;
+	tetVertsBindingLayout.visibility = ShaderStage::Vertex | ShaderStage::Fragment;
+	tetVertsBindingLayout.buffer.type = BufferBindingType::ReadOnlyStorage;
+	tetVertsBindingLayout.buffer.minBindingSize = m_tetVerts.size() * sizeof(m_tetVerts.front());
 
 	// Create bindings
 	m_bindings.resize(3);
@@ -237,11 +243,12 @@ bool Application::onInit() {
 
 
 	//if (!initTexture(RESOURCE_DIR "/fourareen2K_albedo.jpg")) return false;
-	initLighting();
+	//initLighting();
 
 	std::cout << "Creating render pipeline..." << std::endl;
 	RenderPipelineDescriptor pipelineDesc{};
 
+#if 0
 	// Vertex fetch
 	std::vector<VertexAttribute> vertexAttribs(1);
 
@@ -249,6 +256,7 @@ bool Application::onInit() {
 	vertexAttribs[0].shaderLocation = 0;
 	vertexAttribs[0].format = VertexFormat::Uint32x4;
 	vertexAttribs[0].offset = 0;
+#endif
 
 
 	VertexBufferLayout vertexBufferLayout;
@@ -432,7 +440,8 @@ void Application::onFrame() {
 	//renderPass.setVertexBuffer(0, m_tetVerts, 0, m_tetVerts.size() * sizeof(m_tetVerts.begin()));
 	renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
 
-	renderPass.draw(m_tetVerts.size(), 1, 0, 0);
+	// void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
+	renderPass.draw(tet_strip.size(),  m_tetVerts.size(), 0, 0);
 
 	updateGui(renderPass);
 

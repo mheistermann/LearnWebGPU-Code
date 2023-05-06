@@ -41,9 +41,9 @@ struct LightingUniforms {
 
 // Instead of the simple uTime variable, our uniform variable is a struct
 @group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
-@group(0) @binding(1) var<uniform> uTetVerts: array<TetVerts>;
-@group(0) @binding(2) var<uniform> uVertexPos: array<VertexPos>;
-@group(0) @binding(3) var<uniform> uLighting: LightingUniforms;
+@group(0) @binding(1) var<storage,read> uVertexPos: array<VertexPos>;
+@group(0) @binding(2) var<storage,read> uTetVerts: array<TetVerts>;
+//@group(0) @binding(3) var<uniform> uLighting: LightingUniforms;
 
 //@group(0) @binding(1) var textureSampler: sampler;
 //@group(0) @binding(2) var baseColorTexture: texture_2d<f32>;
