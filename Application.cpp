@@ -283,9 +283,12 @@ bool Application::onInit() {
 	fragmentState.constants = nullptr;
 
 	BlendState blendState{};
-	blendState.color.srcFactor = BlendFactor::SrcAlpha; // TODO additive blending
-	blendState.color.dstFactor = BlendFactor::OneMinusSrcAlpha;
+	//blendState.color.srcFactor = BlendFactor::SrcAlpha; // TODO additive blending
+	//blendState.color.dstFactor = BlendFactor::OneMinusSrcAlpha;
+	blendState.color.srcFactor = BlendFactor::One; // TODO additive blending
+	blendState.color.dstFactor = BlendFactor::One;
 	blendState.color.operation = BlendOperation::Add;
+
 	blendState.alpha.srcFactor = BlendFactor::Zero;
 	blendState.alpha.dstFactor = BlendFactor::One;
 	blendState.alpha.operation = BlendOperation::Add;
@@ -300,7 +303,7 @@ bool Application::onInit() {
 
 	DepthStencilState depthStencilState = Default;
 	depthStencilState.depthCompare = CompareFunction::Less;
-	depthStencilState.depthWriteEnabled = true;
+	depthStencilState.depthWriteEnabled = false; // only solid renderingg will write
 	depthStencilState.format = m_depthTextureFormat;
 	depthStencilState.stencilReadMask = 0;
 	depthStencilState.stencilWriteMask = 0;
