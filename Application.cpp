@@ -52,6 +52,7 @@
 #include <array>
 
 constexpr float PI = 3.14159265358979323846f;
+static constexpr auto tet_strip = std::array<uint32_t, 6> {0, 1, 2, 3, 0, 1};
 
 using namespace wgpu;
 using VertexAttributes = ResourceManager::VertexAttributes;
@@ -121,9 +122,9 @@ bool Application::onInit() {
 	adapter.getLimits(&supportedLimits);
 	RequiredLimits requiredLimits = Default;
 	requiredLimits.limits.maxVertexAttributes = 4;
-	requiredLimits.limits.maxVertexBuffers = 1;
-	requiredLimits.limits.maxBindGroups = 2;
-	requiredLimits.limits.maxUniformBuffersPerShaderStage = 2;
+	requiredLimits.limits.maxVertexBuffers = 2;
+	requiredLimits.limits.maxBindGroups = 3;
+	requiredLimits.limits.maxUniformBuffersPerShaderStage = 3;
 	requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4 * sizeof(float);
 	requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
 	requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minStorageBufferOffsetAlignment;
@@ -154,27 +155,38 @@ bool Application::onInit() {
 	ShaderModule shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/shader.wsl", m_device);
 	std::cout << "Shader module: " << shaderModule << std::endl;
 
-	bool success = ResourceManager::loadGeometryFromObj(RESOURCE_DIR "/fourareen.obj", m_vertexData);
-	if (!success) {
-		std::cerr << "Could not load geometry!" << std::endl;
-		return 1;
-	}
+	m_vertices.push_back({0,0,0});
+	m_vertices.push_back({0,0,1});
+	m_vertices.push_back({0,1,0});
+	m_vertices.push_back({1,1,0});
 
-	// Create vertex buffer
+	m_tetVerts.push_back({0,1,2,3});
+
+
 	BufferDescriptor bufferDesc;
-	bufferDesc.size = m_vertexData.size() * sizeof(VertexAttributes);
-	bufferDesc.usage = BufferUsage::CopyDst | BufferUsage::Vertex;
+	bufferDesc.size = m_tetVerts.size() * sizeof(m_tetVerts.front());
+	bufferDesc.usage = BufferUsage::CopyDst | BufferUsage::Uniform;
+	bufferDesc.mappedAtCreation = false;
+	m_tetVertBuffer = m_device.createBuffer(bufferDesc);
+	queue.writeBuffer(m_tetVertBuffer, 0, m_tetVerts.data(), bufferDesc.size);
+
+	bufferDesc.size = m_vertices.size() * sizeof(m_vertices.front());
+	bufferDesc.usage = BufferUsage::CopyDst | BufferUsage::Uniform;
 	bufferDesc.mappedAtCreation = false;
 	m_vertexBuffer = m_device.createBuffer(bufferDesc);
-	queue.writeBuffer(m_vertexBuffer, 0, m_vertexData.data(), bufferDesc.size);
-
-	m_indexCount = static_cast<int>(m_vertexData.size());
+	queue.writeBuffer(m_vertexBuffer, 0, m_vertices.data(), bufferDesc.size);
 
 	// Create uniform buffer
 	bufferDesc.size = sizeof(MyUniforms);
 	bufferDesc.usage = BufferUsage::CopyDst | BufferUsage::Uniform;
 	bufferDesc.mappedAtCreation = false;
 	m_uniformBuffer = m_device.createBuffer(bufferDesc);
+
+	bufferDesc.size = sizeof(tet_strip);
+	bufferDesc.usage = BufferUsage::CopyDst | BufferUsage::Index;
+	bufferDesc.mappedAtCreation = false;
+	m_indexBuffer = m_device.createBuffer(bufferDesc);
+	queue.writeBuffer(m_indexBuffer, 0, tet_strip.data(), tet_strip.size() * sizeof(tet_strip.front()));
 
 	// Upload the initial value of the uniforms
 	m_uniforms.time = 1.0f;
@@ -190,20 +202,6 @@ bool Application::onInit() {
 
 	buildDepthBuffer();
 
-	// Create a sampler
-	SamplerDescriptor samplerDesc;
-	samplerDesc.addressModeU = AddressMode::Repeat;
-	samplerDesc.addressModeV = AddressMode::Repeat;
-	samplerDesc.addressModeW = AddressMode::Repeat;
-	samplerDesc.magFilter = FilterMode::Linear;
-	samplerDesc.minFilter = FilterMode::Linear;
-	samplerDesc.mipmapFilter = MipmapFilterMode::Linear;
-	samplerDesc.lodMinClamp = 0.0f;
-	samplerDesc.lodMaxClamp = 32.0f;
-	samplerDesc.compare = CompareFunction::Undefined;
-	samplerDesc.maxAnisotropy = 1;
-	Sampler sampler = m_device.createSampler(samplerDesc);
-
 	// Create binding layout
 	m_bindingLayoutEntries.resize(2, Default);
 
@@ -213,13 +211,14 @@ bool Application::onInit() {
 	bindingLayout.buffer.type = BufferBindingType::Uniform;
 	bindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
 
-	BindGroupLayoutEntry& samplerBindingLayout = m_bindingLayoutEntries[1];
-	samplerBindingLayout.binding = 1;
-	samplerBindingLayout.visibility = ShaderStage::Fragment;
-	samplerBindingLayout.sampler.type = SamplerBindingType::Filtering;
+	BindGroupLayoutEntry& vertexPosBindingLayout = m_bindingLayoutEntries[1];
+	vertexPosBindingLayout.binding = 1;
+	vertexPosBindingLayout.visibility = ShaderStage::Vertex | ShaderStage::Fragment;
+	vertexPosBindingLayout.buffer.type = BufferBindingType::Uniform;
+	vertexPosBindingLayout.buffer.minBindingSize = m_vertices.size() * sizeof(m_vertices.front());
 
 	// Create bindings
-	m_bindings.resize(2);
+	m_bindings.resize(3);
 
 	m_bindings[0].binding = 0;
 	m_bindings[0].buffer = m_uniformBuffer;
@@ -227,52 +226,46 @@ bool Application::onInit() {
 	m_bindings[0].size = sizeof(MyUniforms);
 
 	m_bindings[1].binding = 1;
-	m_bindings[1].sampler = sampler;
+	m_bindings[1].buffer = m_vertexBuffer;
+	m_bindings[1].offset = 0;
+	m_bindings[1].size = m_vertices.size() * sizeof(m_vertices.front());
 
-	if (!initTexture(RESOURCE_DIR "/fourareen2K_albedo.jpg")) return false;
+	m_bindings[2].binding = 2;
+	m_bindings[2].buffer = m_tetVertBuffer;
+	m_bindings[2].offset = 0;
+	m_bindings[2].size = m_tetVerts.size() * sizeof(m_tetVerts.front());
+
+
+	//if (!initTexture(RESOURCE_DIR "/fourareen2K_albedo.jpg")) return false;
 	initLighting();
 
 	std::cout << "Creating render pipeline..." << std::endl;
 	RenderPipelineDescriptor pipelineDesc{};
 
 	// Vertex fetch
-	std::vector<VertexAttribute> vertexAttribs(4);
+	std::vector<VertexAttribute> vertexAttribs(1);
 
-	// Position attribute
+	// tet vertex indices
 	vertexAttribs[0].shaderLocation = 0;
-	vertexAttribs[0].format = VertexFormat::Float32x3;
-	vertexAttribs[0].offset = offsetof(VertexAttributes, position);
+	vertexAttribs[0].format = VertexFormat::Uint32x4;
+	vertexAttribs[0].offset = 0;
 
-	// Normal attribute
-	vertexAttribs[1].shaderLocation = 1;
-	vertexAttribs[1].format = VertexFormat::Float32x3;
-	vertexAttribs[1].offset = offsetof(VertexAttributes, normal);
-
-	// Color attribute
-	vertexAttribs[2].shaderLocation = 2;
-	vertexAttribs[2].format = VertexFormat::Float32x3;
-	vertexAttribs[2].offset = offsetof(VertexAttributes, color);
-
-	// UV attribute
-	vertexAttribs[3].shaderLocation = 3;
-	vertexAttribs[3].format = VertexFormat::Float32x2;
-	vertexAttribs[3].offset = offsetof(VertexAttributes, uv);
 
 	VertexBufferLayout vertexBufferLayout;
-	vertexBufferLayout.attributeCount = (uint32_t)vertexAttribs.size();
-	vertexBufferLayout.attributes = vertexAttribs.data();
-	vertexBufferLayout.arrayStride = sizeof(VertexAttributes);
+	vertexBufferLayout.attributeCount = 0;
+	vertexBufferLayout.attributes = nullptr;
+	vertexBufferLayout.arrayStride = 0;
 	vertexBufferLayout.stepMode = VertexStepMode::Vertex;
 
-	pipelineDesc.vertex.bufferCount = 1;
-	pipelineDesc.vertex.buffers = &vertexBufferLayout;
+	pipelineDesc.vertex.bufferCount = 0;
+	pipelineDesc.vertex.buffers = nullptr;
 
 	pipelineDesc.vertex.module = shaderModule;
 	pipelineDesc.vertex.entryPoint = "vs_main";
 	pipelineDesc.vertex.constantCount = 0;
 	pipelineDesc.vertex.constants = nullptr;
 
-	pipelineDesc.primitive.topology = PrimitiveTopology::TriangleList;
+	pipelineDesc.primitive.topology = PrimitiveTopology::TriangleStrip;
 	pipelineDesc.primitive.stripIndexFormat = IndexFormat::Undefined;
 	pipelineDesc.primitive.frontFace = FrontFace::CCW;
 	pipelineDesc.primitive.cullMode = CullMode::None;
@@ -285,7 +278,7 @@ bool Application::onInit() {
 	fragmentState.constants = nullptr;
 
 	BlendState blendState{};
-	blendState.color.srcFactor = BlendFactor::SrcAlpha;
+	blendState.color.srcFactor = BlendFactor::SrcAlpha; // TODO additive blending
 	blendState.color.dstFactor = BlendFactor::OneMinusSrcAlpha;
 	blendState.color.operation = BlendOperation::Add;
 	blendState.alpha.srcFactor = BlendFactor::Zero;
@@ -435,10 +428,11 @@ void Application::onFrame() {
 
 	renderPass.setPipeline(m_pipeline);
 
-	renderPass.setVertexBuffer(0, m_vertexBuffer, 0, m_vertexData.size() * sizeof(VertexAttributes));
+	renderPass.setIndexBuffer(m_indexBuffer, IndexFormat::Uint16, 0, tet_strip.size() * sizeof(tet_strip.front()));
+	//renderPass.setVertexBuffer(0, m_tetVerts, 0, m_tetVerts.size() * sizeof(m_tetVerts.begin()));
 	renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
 
-	renderPass.draw(m_indexCount, 1, 0, 0);
+	renderPass.draw(m_tetVerts.size(), 1, 0, 0);
 
 	updateGui(renderPass);
 

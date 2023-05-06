@@ -1,15 +1,15 @@
-struct VertexInput {
-	@location(0) position: vec3<f32>,
-	@location(1) normal: vec3<f32>,
-	@location(2) color: vec3<f32>,
-	@location(3) uv: vec2<f32>,
-}
+//struct VertexInput {
+	//@location(0) position: vec3<f32>,
+	//@location(1) normal: vec3<f32>,
+	//@location(2) color: vec3<f32>,
+	//@location(3) uv: vec2<f32>,
+//}
 
 struct VertexOutput {
 	@builtin(position) position: vec4<f32>,
-	@location(0) color: vec3<f32>,
-	@location(1) normal: vec3<f32>,
-	@location(2) uv: vec2<f32>,
+	//@location(0) color: vec3<f32>,
+	//@location(1) normal: vec3<f32>,
+	//@location(2) uv: vec2<f32>,
 }
 
 /**
@@ -23,6 +23,14 @@ struct MyUniforms {
 	time: f32,
 }
 
+struct TetVerts {
+	idx: vec4<u32>,
+	//idx: u32,
+}
+struct VertexPos {
+	pos: vec3<f32>,
+}
+
 /**
  * A structure holding the lighting settings
  */
@@ -33,37 +41,30 @@ struct LightingUniforms {
 
 // Instead of the simple uTime variable, our uniform variable is a struct
 @group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
+@group(0) @binding(1) var<uniform> uTetVerts: array<TetVerts>;
+@group(0) @binding(2) var<uniform> uVertexPos: array<VertexPos>;
 @group(0) @binding(3) var<uniform> uLighting: LightingUniforms;
 
-@group(0) @binding(1) var textureSampler: sampler;
-@group(0) @binding(2) var baseColorTexture: texture_2d<f32>;
+//@group(0) @binding(1) var textureSampler: sampler;
+//@group(0) @binding(2) var baseColorTexture: texture_2d<f32>;
 
 @vertex
-fn vs_main(in: VertexInput) -> VertexOutput {
+fn vs_main(
+	@builtin(vertex_index) in_vertex_index: u32,
+	@builtin(instance_index) in_instance_index: u32,
+) -> VertexOutput {
 	var out: VertexOutput;
-	out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vec4<f32>(in.position, 1.0);
-	out.color = in.color;
-	out.normal = (uMyUniforms.modelMatrix * vec4<f32>(in.normal, 0.0)).xyz;
-	out.uv = in.uv;
+	let vidx = uTetVerts[in_instance_index].idx[in_vertex_index];
+	//let vidx = uTetVerts[in_instance_index * 4 + in_vertex_index].idx;
+	let vpos = uVertexPos[vidx].pos;
+	out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vec4<f32>(vpos, 1.0);
 	return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-	// Compute shading
-	let normal = normalize(in.normal);
-	var shading = vec3<f32>(0.0);
-	for (var i: i32 = 0; i < 2; i++) {
-		let direction = normalize(uLighting.directions[i].xyz);
-		let color = uLighting.colors[i].rgb;
-		shading += max(0.0, dot(direction, normal)) * color;
-	}
-	
-	// Sample texture
-	let baseColor = textureSample(baseColorTexture, textureSampler, in.uv).rgb;
-
 	// Combine texture and lighting
-	let color = baseColor * shading;
+	let color = vec3<f32>(0.8, 0.7, 0.6);
 
 	// Gamma-correction
 	let corrected_color = pow(color, vec3<f32>(2.2));

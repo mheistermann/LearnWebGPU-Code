@@ -97,16 +97,22 @@ private:
 	wgpu::Device m_device = nullptr;
 	wgpu::SwapChain m_swapChain = nullptr;
 	wgpu::Buffer m_uniformBuffer = nullptr;
+	wgpu::Buffer m_indexBuffer = nullptr;
 	wgpu::TextureView m_depthTextureView = nullptr;
 	wgpu::RenderPipeline m_pipeline = nullptr;
 	wgpu::Buffer m_vertexBuffer = nullptr;
+	wgpu::Buffer m_tetVertBuffer = nullptr;
 	wgpu::BindGroup m_bindGroup = nullptr;
 	std::vector<wgpu::Texture> m_textures;
 	wgpu::Texture m_depthTexture = nullptr;
 	wgpu::SwapChainDescriptor m_swapChainDesc;
 	MyUniforms m_uniforms;
 	std::vector<ResourceManager::VertexAttributes> m_vertexData;
-	int m_indexCount;
+    using TetVerts = std::array<uint32_t, 4>;
+	std::vector<TetVerts> m_tetVerts;
+    using VertexAttrib = std::array<float, 3>;
+	std::vector<VertexAttrib> m_vertices;
+
 	std::unique_ptr<wgpu::ErrorCallback> m_uncapturedErrorCallback;
 
 	std::vector<wgpu::BindGroupLayoutEntry> m_bindingLayoutEntries;
