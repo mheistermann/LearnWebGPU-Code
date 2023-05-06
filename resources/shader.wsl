@@ -23,12 +23,8 @@ struct MyUniforms {
 	time: f32,
 }
 
-struct TetVerts {
-	idx: vec4<u32>,
-	//idx: u32,
-}
-struct VertexPos {
-	pos: vec3<f32>,
+struct TetVertsPos {
+	pos: array<vec4<f32>, 4>,
 }
 
 /**
@@ -41,8 +37,7 @@ struct LightingUniforms {
 
 // Instead of the simple uTime variable, our uniform variable is a struct
 @group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
-@group(0) @binding(1) var<storage,read> uVertexPos: array<VertexPos>;
-@group(0) @binding(2) var<storage,read> uTetVerts: array<TetVerts>;
+@group(0) @binding(1) var<storage,read> in_buf_tet_verts_worldpos: array<TetVertsPos>;
 //@group(0) @binding(3) var<uniform> uLighting: LightingUniforms;
 
 //@group(0) @binding(1) var textureSampler: sampler;
@@ -54,9 +49,8 @@ fn vs_main(
 	@builtin(instance_index) in_instance_index: u32,
 ) -> VertexOutput {
 	var out: VertexOutput;
-	let vidx = uTetVerts[in_instance_index].idx[in_vertex_index];
-	let vpos = uVertexPos[vidx].pos;
-	out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vec4<f32>(vpos, 1.0);
+	let vpos = in_buf_tet_verts_worldpos[in_instance_index].pos[in_vertex_index];
+	out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vpos;
 	return out;
 }
 
@@ -69,3 +63,4 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 	let corrected_color = pow(color, vec3<f32>(2.2));
 	return vec4<f32>(corrected_color, uMyUniforms.color.a);
 }
+

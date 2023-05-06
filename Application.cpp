@@ -126,6 +126,15 @@ bool Application::onInit() {
 	requiredLimits.limits.maxBindGroups = 3;
 	requiredLimits.limits.maxUniformBuffersPerShaderStage = 3;
 	requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4 * sizeof(float);
+	requiredLimits.limits.maxStorageBufferBindingSize =1234; // TODO: set properly
+	requiredLimits.limits.maxStorageBuffersPerShaderStage = 3;
+	requiredLimits.limits.maxComputeWorkgroupStorageSize = 1234; // TODO
+	requiredLimits.limits.maxComputeWorkgroupSizeX = 32;
+	requiredLimits.limits.maxComputeWorkgroupSizeY = 1;
+	requiredLimits.limits.maxComputeWorkgroupSizeZ = 1;
+	requiredLimits.limits.maxComputeInvocationsPerWorkgroup = 32;
+	requiredLimits.limits.maxComputeWorkgroupsPerDimension = 1234; // TODO
+
 	requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
 	requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minStorageBufferOffsetAlignment;
 
@@ -145,21 +154,38 @@ bool Application::onInit() {
 		std::cout << std::endl;
 	});
 
-	Queue queue = m_device.getQueue();
-
 	// Create swapchain
 	m_swapChainFormat = m_surface.getPreferredFormat(adapter);
 	buildSwapChain();
 
-	std::cout << "Creating shader module..." << std::endl;
-	ShaderModule shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/shader.wsl", m_device);
-	std::cout << "Shader module: " << shaderModule << std::endl;
 
+	std::cout << "Creating shader module..." << std::endl;
+	m_shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/shader.wsl", m_device);
+	std::cout << "Shader module: " << m_shaderModule << std::endl;
+	m_compute_shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/compute.wsl", m_device);
+	std::cout << "Shader module: " << m_compute_shaderModule << std::endl;
+
+
+	std::cout << "Creating buffers..." << std::endl;
+	createBuffers();
+
+	std::cout << "Creating compute pipeline..." << std::endl;
+	buildComputePipeline();
+
+	std::cout << "Creating render pipeline..." << std::endl;
+	buildRenderPipeline();
+
+	initGui();
+
+	return true;
+}
+void Application::createBuffers()
+{
+	Queue queue = m_device.getQueue();
 	m_vertices.push_back({.5,.5,.5});
 	m_vertices.push_back({0,0,1});
 	m_vertices.push_back({0,1,0});
 	m_vertices.push_back({0,1,0});
-
 	m_tetVerts.push_back({0,1,2,3});
 
 
@@ -175,6 +201,11 @@ bool Application::onInit() {
 	bufferDesc.mappedAtCreation = false;
 	m_vertexBuffer = m_device.createBuffer(bufferDesc);
 	queue.writeBuffer(m_vertexBuffer, 0, m_vertices.data(), bufferDesc.size);
+
+	bufferDesc.size = m_tetVerts.size() * 4 * 4 * sizeof(float);
+	bufferDesc.usage = BufferUsage::Storage;
+	bufferDesc.mappedAtCreation = false;
+	m_tetVertPosBuffer = m_device.createBuffer(bufferDesc);
 
 	// Create uniform buffer
 	bufferDesc.size = sizeof(MyUniforms);
@@ -202,8 +233,12 @@ bool Application::onInit() {
 
 	buildDepthBuffer();
 
+
+}
+void Application::buildRenderPipeline() {
+
 	// Create binding layout
-	m_bindingLayoutEntries.resize(3, Default);
+	m_bindingLayoutEntries.resize(2, Default);
 
 	BindGroupLayoutEntry& bindingLayout = m_bindingLayoutEntries[0];
 	bindingLayout.binding = 0;
@@ -215,16 +250,10 @@ bool Application::onInit() {
 	vertexPosBindingLayout.binding = 1;
 	vertexPosBindingLayout.visibility = ShaderStage::Vertex | ShaderStage::Fragment;
 	vertexPosBindingLayout.buffer.type = BufferBindingType::ReadOnlyStorage;
-	vertexPosBindingLayout.buffer.minBindingSize = m_vertices.size() * sizeof(m_vertices.front());
 
-	BindGroupLayoutEntry& tetVertsBindingLayout = m_bindingLayoutEntries[2];
-	tetVertsBindingLayout.binding = 2;
-	tetVertsBindingLayout.visibility = ShaderStage::Vertex | ShaderStage::Fragment;
-	tetVertsBindingLayout.buffer.type = BufferBindingType::ReadOnlyStorage;
-	tetVertsBindingLayout.buffer.minBindingSize = m_tetVerts.size() * sizeof(m_tetVerts.front());
 
 	// Create bindings
-	m_bindings.resize(3);
+	m_bindings.resize(2);
 
 	m_bindings[0].binding = 0;
 	m_bindings[0].buffer = m_uniformBuffer;
@@ -232,14 +261,10 @@ bool Application::onInit() {
 	m_bindings[0].size = sizeof(MyUniforms);
 
 	m_bindings[1].binding = 1;
-	m_bindings[1].buffer = m_vertexBuffer;
+	m_bindings[1].buffer = m_tetVertPosBuffer;
 	m_bindings[1].offset = 0;
-	m_bindings[1].size = m_vertices.size() * sizeof(m_vertices.front());
+	m_bindings[1].size = m_tetVerts.size() * 4 * 4 * sizeof(float);
 
-	m_bindings[2].binding = 2;
-	m_bindings[2].buffer = m_tetVertBuffer;
-	m_bindings[2].offset = 0;
-	m_bindings[2].size = m_tetVerts.size() * sizeof(m_tetVerts.front());
 
 
 	std::cout << "Creating render pipeline..." << std::endl;
@@ -265,7 +290,7 @@ bool Application::onInit() {
 	pipelineDesc.vertex.bufferCount = 0;
 	pipelineDesc.vertex.buffers = nullptr;
 
-	pipelineDesc.vertex.module = shaderModule;
+	pipelineDesc.vertex.module = m_shaderModule;
 	pipelineDesc.vertex.entryPoint = "vs_main";
 	pipelineDesc.vertex.constantCount = 0;
 	pipelineDesc.vertex.constants = nullptr;
@@ -277,7 +302,7 @@ bool Application::onInit() {
 
 	FragmentState fragmentState{};
 	pipelineDesc.fragment = &fragmentState;
-	fragmentState.module = shaderModule;
+	fragmentState.module = m_shaderModule;
 	fragmentState.entryPoint = "fs_main";
 	fragmentState.constantCount = 0;
 	fragmentState.constants = nullptr;
@@ -334,11 +359,71 @@ bool Application::onInit() {
 	bindGroupDesc.layout = bindGroupLayout;
 	bindGroupDesc.entryCount = (uint32_t)m_bindings.size();
 	bindGroupDesc.entries = m_bindings.data();
-	m_bindGroup = m_device.createBindGroup(bindGroupDesc);
+	m_renderBindGroup = m_device.createBindGroup(bindGroupDesc);
+}
+void Application::buildComputePipeline() {
 
-	initGui();
+	m_compute_bindingLayoutEntries.resize(3, Default);
 
-	return true;
+	BindGroupLayoutEntry& bindingLayout_vpos = m_compute_bindingLayoutEntries[0];
+	bindingLayout_vpos.binding = 0;
+	bindingLayout_vpos.visibility = ShaderStage::Compute;
+	bindingLayout_vpos.buffer.type = BufferBindingType::ReadOnlyStorage;
+	//bindingLayout_vpos.buffer.minBindingSize = m_vertices.size() * sizeof(m_vertices.front());
+
+	BindGroupLayoutEntry& bindingLayout_tet = m_compute_bindingLayoutEntries[1];
+	bindingLayout_tet.binding = 1;
+	bindingLayout_tet.visibility = ShaderStage::Compute;
+	bindingLayout_tet.buffer.type = BufferBindingType::ReadOnlyStorage;
+	//bindingLayout_tet.buffer.minBindingSize = m_tetVerts.size() * sizeof(m_tetVerts.front());
+
+	BindGroupLayoutEntry& bindingLayout_write = m_compute_bindingLayoutEntries[2];
+	bindingLayout_write.binding = 2;
+	bindingLayout_write.visibility = ShaderStage::Compute;
+	bindingLayout_write.buffer.type = BufferBindingType::Storage;
+	//bindingLayout_write.buffer.minBindingSize = m_tetVerts.size() * 4 * 4 * sizeof(float);
+
+	BindGroupLayoutDescriptor bindGroupLayoutDesc{};
+	bindGroupLayoutDesc.entryCount = (uint32_t)m_compute_bindingLayoutEntries.size();
+	bindGroupLayoutDesc.entries = m_compute_bindingLayoutEntries.data();
+	BindGroupLayout bindGroupLayout = m_device.createBindGroupLayout(bindGroupLayoutDesc);
+
+	// Create bindings
+	m_compute_bindings.resize(3);
+
+	m_compute_bindings[0].binding = 0;
+	m_compute_bindings[0].buffer = m_vertexBuffer;
+	m_compute_bindings[0].offset = 0;
+	m_compute_bindings[0].size = m_vertices.size() * sizeof(m_vertices.front());
+
+	m_compute_bindings[1].binding = 1;
+	m_compute_bindings[1].buffer = m_tetVertBuffer;
+	m_compute_bindings[1].offset = 0;
+	m_compute_bindings[1].size = m_tetVerts.size() * sizeof(m_tetVerts.front());
+
+	m_compute_bindings[2].binding = 2;
+	m_compute_bindings[2].buffer = m_tetVertPosBuffer;
+	m_compute_bindings[2].offset = 0;
+	m_compute_bindings[2].size = m_tetVerts.size() * 4 * 4 * sizeof(float);
+
+
+	BindGroupDescriptor bindGroupDesc{};
+	bindGroupDesc.layout = bindGroupLayout;
+	bindGroupDesc.entryCount = (uint32_t)m_compute_bindings.size();
+	bindGroupDesc.entries = m_compute_bindings.data();
+	m_computeBindGroup = m_device.createBindGroup(bindGroupDesc);
+
+	//BindGroupLayout bindGroupLayout = m_device.createBindGroupLayout(bindGroupLayoutDesc);
+	PipelineLayoutDescriptor pipelineLayoutDesc;
+	pipelineLayoutDesc.bindGroupLayoutCount = 1;
+	pipelineLayoutDesc.bindGroupLayouts = (WGPUBindGroupLayout*)&bindGroupLayout;
+
+	ComputePipelineDescriptor pipelineDesc;
+	pipelineDesc.compute.entryPoint = "computeTetVerts";
+	pipelineDesc.compute.module = m_compute_shaderModule;
+	pipelineDesc.layout = m_device.createPipelineLayout(pipelineLayoutDesc);
+	m_compute_pipeline = m_device.createComputePipeline(pipelineDesc);
+	std::cout << "Render pipeline: " << m_pipeline << std::endl;
 }
 
 void Application::buildSwapChain() {
@@ -386,6 +471,48 @@ void Application::buildDepthBuffer() {
 	m_depthTextureView = m_depthTexture.createView(depthTextureViewDesc);
 }
 
+void Application::onCompute() {
+	std::cout << "onCompute()" << std::endl;
+	// Initialize a command encoder
+    Queue queue = m_device.getQueue();
+    CommandEncoderDescriptor encoderDesc = Default;
+    CommandEncoder encoder = m_device.createCommandEncoder(encoderDesc);
+
+    // Create and use compute pass here!
+	//
+	ComputePassDescriptor computePassDesc;
+	computePassDesc.timestampWriteCount = 0;
+	computePassDesc.timestampWrites = nullptr;
+	ComputePassEncoder computePass = encoder.beginComputePass(computePassDesc);
+
+	computePass.setPipeline(m_compute_pipeline);
+	computePass.setBindGroup(0, m_computeBindGroup, 0, nullptr);
+	//computePass.dispatchWorkgroups(m_tetVerts.size(),1,1);
+	uint32_t wg_size = 32;
+	uint32_t wg_count = (m_tetVerts.size() +wg_size-1)/ wg_size;
+	computePass.dispatchWorkgroups(wg_count,1,1);
+	// Use compute pass
+
+	// Finalize compute pass
+	computePass.end();
+
+// Clean up
+#if !defined(WEBGPU_BACKEND_WGPU)
+    wgpuComputePassEncoderRelease(computePass);
+#endif
+
+    // Encode and submit the GPU commands
+    CommandBuffer commands = encoder.finish(CommandBufferDescriptor{});
+    queue.submit(commands);
+
+    // Clean up
+#if !defined(WEBGPU_BACKEND_WGPU)
+    wgpuCommandBufferRelease(commands);
+    wgpuCommandEncoderRelease(encoder);
+    wgpuQueueRelease(queue);
+#endif
+	std::cout << "onCompute submitted" << std::endl;
+}
 void Application::onFrame() {
 	glfwPollEvents();
 	Queue queue = m_device.getQueue();
@@ -437,7 +564,7 @@ void Application::onFrame() {
 
 	renderPass.setIndexBuffer(m_indexBuffer, IndexFormat::Uint16, 0, tet_strip.size() * sizeof(tet_strip.front()));
 	//renderPass.setVertexBuffer(0, m_tetVerts, 0, m_tetVerts.size() * sizeof(m_tetVerts.begin()));
-	renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
+	renderPass.setBindGroup(0, m_renderBindGroup, 0, nullptr);
 
 	//void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t baseVertex, uint32_t firstInstance);
 	renderPass.drawIndexed(tet_strip.size(), m_tetVerts.size(), 0, 0, 0);

@@ -41,6 +41,7 @@ public:
 	// A function called only once at the beginning. Returns false is init failed.
 	bool onInit();
 
+	void onCompute();
 	// A function called at each frame, guarantied never to be called before `onInit`.
 	void onFrame();
 
@@ -64,6 +65,10 @@ private:
 	void updateViewMatrix();
 	void updateDragInertia();
 
+	void createBuffers();
+	void buildComputePipeline();
+	void buildRenderPipeline();
+
 	void initGui(); // called in onInit
 	void updateGui(wgpu::RenderPassEncoder renderPass); // called in onFrame
 
@@ -85,6 +90,8 @@ private:
 
 	// Everything that is initialized in `onInit` and needed in `onFrame`.
 	GLFWwindow* m_window = nullptr;
+	wgpu::ShaderModule m_shaderModule = nullptr;
+	wgpu::ShaderModule m_compute_shaderModule = nullptr;
 	wgpu::Instance m_instance = nullptr;
 	wgpu::Surface m_surface = nullptr;
 	wgpu::TextureFormat m_swapChainFormat = wgpu::TextureFormat::Undefined;
@@ -95,9 +102,12 @@ private:
 	wgpu::Buffer m_indexBuffer = nullptr;
 	wgpu::TextureView m_depthTextureView = nullptr;
 	wgpu::RenderPipeline m_pipeline = nullptr;
+	wgpu::ComputePipeline m_compute_pipeline = nullptr;
 	wgpu::Buffer m_vertexBuffer = nullptr;
 	wgpu::Buffer m_tetVertBuffer = nullptr;
-	wgpu::BindGroup m_bindGroup = nullptr;
+	wgpu::Buffer m_tetVertPosBuffer = nullptr;
+	wgpu::BindGroup m_renderBindGroup = nullptr;
+	wgpu::BindGroup m_computeBindGroup = nullptr;
 	std::vector<wgpu::Texture> m_textures;
 	wgpu::Texture m_depthTexture = nullptr;
 	wgpu::SwapChainDescriptor m_swapChainDesc;
@@ -112,6 +122,9 @@ private:
 
 	std::vector<wgpu::BindGroupLayoutEntry> m_bindingLayoutEntries;
 	std::vector<wgpu::BindGroupEntry> m_bindings;
+
+	std::vector<wgpu::BindGroupLayoutEntry> m_compute_bindingLayoutEntries;
+	std::vector<wgpu::BindGroupEntry> m_compute_bindings;
 
 	// Lighting
 	struct LightingUniforms {
