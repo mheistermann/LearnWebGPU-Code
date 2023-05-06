@@ -55,7 +55,6 @@ fn vs_main(
 ) -> VertexOutput {
 	var out: VertexOutput;
 	let vidx = uTetVerts[in_instance_index].idx[in_vertex_index];
-	//let vidx = uTetVerts[in_instance_index * 4 + in_vertex_index].idx;
 	let vpos = uVertexPos[vidx].pos;
 	out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vec4<f32>(vpos, 1.0);
 	return out;

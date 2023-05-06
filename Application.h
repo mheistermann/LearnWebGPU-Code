@@ -67,11 +67,6 @@ private:
 	void initGui(); // called in onInit
 	void updateGui(wgpu::RenderPassEncoder renderPass); // called in onFrame
 
-	bool initTexture(const std::filesystem::path& path);
-
-	void initLighting();
-	void updateLighting();
-
 private:
 	using vec2 = glm::vec2;
 	using vec3 = glm::vec3;

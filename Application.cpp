@@ -52,7 +52,7 @@
 #include <array>
 
 constexpr float PI = 3.14159265358979323846f;
-static constexpr auto tet_strip = std::array<uint32_t, 6> {0, 1, 2, 3, 0, 1};
+static constexpr auto tet_strip = std::array<uint16_t, 6> {0, 1, 2, 3, 0, 1};
 
 using namespace wgpu;
 using VertexAttributes = ResourceManager::VertexAttributes;
@@ -155,10 +155,10 @@ bool Application::onInit() {
 	ShaderModule shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/shader.wsl", m_device);
 	std::cout << "Shader module: " << shaderModule << std::endl;
 
-	m_vertices.push_back({0,0,0});
+	m_vertices.push_back({.5,.5,.5});
 	m_vertices.push_back({0,0,1});
 	m_vertices.push_back({0,1,0});
-	m_vertices.push_back({1,1,0});
+	m_vertices.push_back({0,1,0});
 
 	m_tetVerts.push_back({0,1,2,3});
 
@@ -242,9 +242,6 @@ bool Application::onInit() {
 	m_bindings[2].size = m_tetVerts.size() * sizeof(m_tetVerts.front());
 
 
-	//if (!initTexture(RESOURCE_DIR "/fourareen2K_albedo.jpg")) return false;
-	//initLighting();
-
 	std::cout << "Creating render pipeline..." << std::endl;
 	RenderPipelineDescriptor pipelineDesc{};
 
@@ -256,7 +253,6 @@ bool Application::onInit() {
 	vertexAttribs[0].shaderLocation = 0;
 	vertexAttribs[0].format = VertexFormat::Uint32x4;
 	vertexAttribs[0].offset = 0;
-#endif
 
 
 	VertexBufferLayout vertexBufferLayout;
@@ -264,6 +260,7 @@ bool Application::onInit() {
 	vertexBufferLayout.attributes = nullptr;
 	vertexBufferLayout.arrayStride = 0;
 	vertexBufferLayout.stepMode = VertexStepMode::Vertex;
+#endif
 
 	pipelineDesc.vertex.bufferCount = 0;
 	pipelineDesc.vertex.buffers = nullptr;
@@ -274,7 +271,7 @@ bool Application::onInit() {
 	pipelineDesc.vertex.constants = nullptr;
 
 	pipelineDesc.primitive.topology = PrimitiveTopology::TriangleStrip;
-	pipelineDesc.primitive.stripIndexFormat = IndexFormat::Undefined;
+	pipelineDesc.primitive.stripIndexFormat = IndexFormat::Uint16;
 	pipelineDesc.primitive.frontFace = FrontFace::CCW;
 	pipelineDesc.primitive.cullMode = CullMode::None;
 
@@ -390,7 +387,6 @@ void Application::onFrame() {
 	glfwPollEvents();
 	Queue queue = m_device.getQueue();
 
-	updateLighting();
 	updateDragInertia();
 
 	// Update uniform buffer
@@ -440,8 +436,8 @@ void Application::onFrame() {
 	//renderPass.setVertexBuffer(0, m_tetVerts, 0, m_tetVerts.size() * sizeof(m_tetVerts.begin()));
 	renderPass.setBindGroup(0, m_bindGroup, 0, nullptr);
 
-	// void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
-	renderPass.draw(tet_strip.size(),  m_tetVerts.size(), 0, 0);
+	//void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t baseVertex, uint32_t firstInstance);
+	renderPass.drawIndexed(tet_strip.size(), m_tetVerts.size(), 0, 0, 0);
 
 	updateGui(renderPass);
 
@@ -583,75 +579,4 @@ void Application::updateGui(RenderPassEncoder renderPass) {
 	ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), renderPass);
 }
 
-bool Application::initTexture(const std::filesystem::path &path) {
-	// Create a texture
-	TextureView textureView = nullptr;
-	Texture texture = ResourceManager::loadTexture(path, m_device, &textureView);
-	if (!texture) {
-		std::cerr << "Could not load texture!" << std::endl;
-		return false;
-	}
-	m_textures.push_back(texture);
 
-	// Setup binding
-	uint32_t bindingIndex = (uint32_t)m_bindingLayoutEntries.size();
-	BindGroupLayoutEntry bindingLayout = Default;
-	bindingLayout.binding = bindingIndex;
-	bindingLayout.visibility = ShaderStage::Fragment;
-	bindingLayout.texture.sampleType = TextureSampleType::Float;
-	bindingLayout.texture.viewDimension = TextureViewDimension::_2D;
-	m_bindingLayoutEntries.push_back(bindingLayout);
-
-	BindGroupEntry binding = Default;
-	binding.binding = bindingIndex;
-	binding.textureView = textureView;
-	m_bindings.push_back(binding);
-
-	return true;
-}
-
-void Application::initLighting() {
-	Queue queue = m_device.getQueue();
-
-	// Create uniform buffer
-	BufferDescriptor bufferDesc;
-	bufferDesc.size = sizeof(LightingUniforms);
-	bufferDesc.usage = BufferUsage::CopyDst | BufferUsage::Uniform;
-	bufferDesc.mappedAtCreation = false;
-	m_lightingUniformBuffer = m_device.createBuffer(bufferDesc);
-
-	// Upload the initial value of the uniforms
-	m_lightingUniforms.directions = {
-		vec4{0.5, -0.9, 0.1, 0.0},
-		vec4{0.2, 0.4, 0.3, 0.0}
-	};
-	m_lightingUniforms.colors = {
-		vec4{1.0, 0.9, 0.6, 1.0},
-		vec4{0.6, 0.9, 1.0, 1.0}
-	};
-
-	queue.writeBuffer(m_lightingUniformBuffer, 0, &m_lightingUniforms, sizeof(LightingUniforms));
-
-	// Setup binding
-	uint32_t bindingIndex = (uint32_t)m_bindingLayoutEntries.size();
-	BindGroupLayoutEntry bindingLayout = Default;
-	bindingLayout.binding = bindingIndex;
-	bindingLayout.visibility = ShaderStage::Fragment;
-	bindingLayout.buffer.type = BufferBindingType::Uniform;
-	bindingLayout.buffer.minBindingSize = sizeof(LightingUniforms);
-	m_bindingLayoutEntries.push_back(bindingLayout);
-
-	BindGroupEntry binding = Default;
-	binding.binding = bindingIndex;
-	binding.buffer = m_lightingUniformBuffer;
-	binding.offset = 0;
-	binding.size = sizeof(LightingUniforms);
-	m_bindings.push_back(binding);
-}
-
-void Application::updateLighting() {
-	if (m_lightingUniformsChanged) {
-		Queue queue = m_device.getQueue();
-		queue.writeBuffer(m_lightingUniformBuffer, 0, &m_lightingUniforms, sizeof(LightingUniforms));
-	}
-}
