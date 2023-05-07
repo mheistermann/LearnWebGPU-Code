@@ -166,7 +166,7 @@ bool Application::onInit() {
 	std::cout << "Creating shader module..." << std::endl;
 	m_shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/shader.wsl", m_device);
 	std::cout << "Shader module: " << m_shaderModule << std::endl;
-	m_compute_shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/compute.wsl", m_device);
+	//m_compute_shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/compute.wsl", m_device);
 	std::cout << "Shader module: " << m_compute_shaderModule << std::endl;
 
 
@@ -335,7 +335,7 @@ void Application::buildComputePipeline() {
 
 	ComputePipelineDescriptor pipelineDesc;
 	pipelineDesc.compute.entryPoint = "computeTetVerts";
-	pipelineDesc.compute.module = m_compute_shaderModule;
+	pipelineDesc.compute.module = m_shaderModule;
 	pipelineDesc.layout = m_device.createPipelineLayout(pipelineLayoutDesc);
 	m_compute_pipeline = m_device.createComputePipeline(pipelineDesc);
 	std::cout << "Render pipeline: " << m_pipeline << std::endl;
