@@ -103,11 +103,6 @@ public:
     ShaderLoader(wgpu::Device &_device, const path& _common_path)
         : device_(_device)
         , common_src_{slurp(_common_path)}
-        , desc_common_{WGPUShaderModuleWGSLDescriptor{
-            .chain = {.next = nullptr,
-                .sType = wgpu::SType::ShaderModuleWGSLDescriptor,},
-            .code=common_src_.c_str()
-        }}
     {
     }
 
@@ -116,7 +111,7 @@ public:
         auto source = common_src_ + slurp(_path);
         auto wgsl_desc = WGPUShaderModuleWGSLDescriptor{
             .chain = {
-                .next = nullptr,//&desc_common_.chain,
+                .next = nullptr,
                 .sType = wgpu::SType::ShaderModuleWGSLDescriptor,
             },
             .code = source.c_str(),
@@ -144,7 +139,6 @@ private:
     }
     wgpu::Device device_ = nullptr;
     std::string common_src_;
-    wgpu::ShaderModuleWGSLDescriptor desc_common_;
 };
 
 } // namespace MAL
