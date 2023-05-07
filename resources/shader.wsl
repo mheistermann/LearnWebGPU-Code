@@ -45,6 +45,68 @@ fn computeTetVerts(
     // Compute stuff
 }
 
+struct TetPrecomputeData {
+	baca: vec3<f32>, // (b-a) x (c-a)
+	cdbd: vec3<f32>,
+	daba: vec3<f32>,
+	cada: vec3<f32>,
+}
+
+
+/*
+@group(0) @binding(0) var<storage,read> inbuf_tet_verts : array<TetVertsPos>;
+@group(1) @binding(0) var<storage,read_write> outbuf_tet_precomp : array<TetPrecomputeData>;
+
+@compute @workgroup_size(32)
+fn precomputeTet(
+	@builtin(global_invocation_id) id: vec3<u32>)
+{
+	let tet_id = id.x;
+	let tet = outbuf_tet_verts[tet_id];
+	let a = tet.pos[0];
+	let b = tet.pos[1];
+	let c = tet.pos[2];
+	let d = tet.pos[3];
+	let ba = b-a;
+	let ca = c-a;
+	let da = d-a;
+	let cd = c-d;
+	let bd = b-d;
+	var tmp: TetPrecomputeData;
+	tmp.baca = cross(ba, ca);
+	tmp.cdbd = cross(cd, bd);
+	tmp.daba = cross(da, ba);
+	tmp.cada = cross(ca, da);
+	outbuf_tet_precomp[tet_id] = tmp;
+}
+
+struct TetPrecomputeDataViewDep {
+	cramer_t_nom: vec4<f32>,
+}
+
+@group(0) @binding(0) var<uniform> camera_origin : vec3<f32>;
+@group(1) @binding(0) var<storage,read> inbuf_tet_verts : array<TetVertsPos>;
+@group(1) @binding(2) var<storage,read> inbuf_tet_precomp : array<TetPrecomputeData>;
+@group(2) @binding(3) var<storage,read_write> outbuf_tet_precomp_viewdep : array<TetPrecomputeDataViewDep>;
+@compute @workgroup_size(32)
+fn precomputeTetViewDep(
+	@builtin(global_invocation_id) id: vec3<u32>)
+{
+	let tet_id = id.x;
+	var pc = inbuf_tet_precomp[tet_id];
+	var tmp: TetPrecomputeDataViewDep;
+	var ctn: vec4<f32>;
+	let o = camera_origin;
+	let a = inbuf_tet_verts[tet_id].pos[0];
+	let d = inbuf_tet_verts[tet_id].pos[3];
+	outbuf_tet_precomp_viewdep[tet_id].cramer_t_nom = vec4<f32>(
+		dot(pc.baca, o-a),
+		dot(pc.cdbd, o-d),
+		dot(pc.daba, o-a),
+		dot(pc.cada, o-a));
+}
+*/
+
 /**
  * A structure holding the lighting settings
  */
@@ -55,7 +117,8 @@ struct LightingUniforms {
 
 // Instead of the simple uTime variable, our uniform variable is a struct
 @group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
-@group(1) @binding(0) var<storage,read> in_buf_tet_verts_worldpos: array<TetVertsPos>;
+@group(1) @binding(0) var<storage,read> inbuf_tet_verts: array<TetVertsPos>;
+//@group(1) @binding(1) var<storage,read> inbuf_tet_precomp : array<TetPrecomputeData>;
 //@group(0) @binding(3) var<uniform> uLighting: LightingUniforms;
 
 //@group(0) @binding(1) var textureSampler: sampler;
@@ -67,7 +130,7 @@ fn vs_main(
 	@builtin(instance_index) in_instance_index: u32,
 ) -> VertexOutput {
 	var out: VertexOutput;
-	let vpos = in_buf_tet_verts_worldpos[in_instance_index].pos[in_vertex_index];
+	let vpos = inbuf_tet_verts[in_instance_index].pos[in_vertex_index];
 	out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vpos;
 	return out;
 }
