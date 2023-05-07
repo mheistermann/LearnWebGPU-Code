@@ -104,20 +104,16 @@ private:
 	wgpu::TextureView m_depthTextureView = nullptr;
 	wgpu::RenderPipeline m_pipeline = nullptr;
 	wgpu::ComputePipeline m_compute_pipeline = nullptr;
-	wgpu::Buffer m_vertexBuffer = nullptr;
-	wgpu::Buffer m_tetVertBuffer = nullptr;
-	wgpu::Buffer m_tetVertPosBuffer = nullptr;
+
+	TetMeshBuffer m_tet_mesh_buffer;
+	TetVertsBuffer m_tet_verts_buffer;
+	
+
 	wgpu::BindGroup m_renderBindGroup = nullptr;
-	wgpu::BindGroup m_computeBindGroup = nullptr;
 	std::vector<wgpu::Texture> m_textures;
 	wgpu::Texture m_depthTexture = nullptr;
 	wgpu::SwapChainDescriptor m_swapChainDesc;
 	MyUniforms m_uniforms;
-	std::vector<ResourceManager::VertexAttributes> m_vertexData;
-    using TetVerts = std::array<uint32_t, 4>;
-	std::vector<TetVerts> m_tetVerts;
-    using VertexAttrib = std::array<float, 3>;
-	std::vector<VertexAttrib> m_vertices;
 
 	std::unique_ptr<wgpu::ErrorCallback> m_uncapturedErrorCallback;
 

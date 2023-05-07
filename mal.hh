@@ -9,6 +9,7 @@ namespace MAL {
 
 class Buffer {
 public:
+    Buffer() = default;
     Buffer(wgpu::Device &_device,
             WGPUBufferDescriptor _desc)
         : desc_(_desc)
@@ -26,23 +27,31 @@ public:
     }
 private:
     wgpu::BufferDescriptor desc_;
-    wgpu::Buffer buffer_;
+    wgpu::Buffer buffer_ = nullptr;
 };
 
 template<typename T>
 class StaticVectorBuffer : public Buffer {
 public:
+    StaticVectorBuffer() = default;
     StaticVectorBuffer(wgpu::Device &_device,
             std::vector<T> const &_vec,
             WGPUBufferUsageFlags _usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Storage)
         : Buffer{_device,
             WGPUBufferDescriptor{
+                .nextInChain = nullptr,
+                .label = "StaticVectorBuffer",
                 .size = _vec.size() * sizeof(_vec.front()),
                         .usage=_usage}}
     {
         auto queue = _device.getQueue();
         queue.writeBuffer(get(), 0, _vec.data(), desc().size);
     }
+};
+
+struct BindGroupWithLayout {
+    wgpu::BindGroupLayout layout = nullptr;
+    wgpu::BindGroup group = nullptr;
 };
 
 class BindGroupBuilder {
@@ -66,15 +75,17 @@ public:
 
         return *this;
     }
-    wgpu::BindGroup build(wgpu::Device &_device)
+    BindGroupWithLayout build(wgpu::Device &_device)
     {
-        auto layout = _device.createBindGroupLayout(WGPUBindGroupLayoutDescriptor{
+        BindGroupWithLayout bg;
+        bg.layout = _device.createBindGroupLayout(WGPUBindGroupLayoutDescriptor{
             .entryCount = static_cast<uint32_t>(layout_entries_.size()),
             .entries = layout_entries_.data()});
-        return _device.createBindGroup(WGPUBindGroupDescriptor{
-                .layout = layout,
+        bg.group = _device.createBindGroup(WGPUBindGroupDescriptor{
+                .layout = bg.layout,
                 .entryCount=static_cast<uint32_t>(binding_entries_.size()),
                 .entries = binding_entries_.data()});
+        return bg;
     }
 private:
     std::vector<wgpu::BindGroupLayoutEntry> layout_entries_;

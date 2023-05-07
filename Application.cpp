@@ -50,7 +50,6 @@
 #include <sstream>
 #include <string>
 #include <array>
-#include "mal.hh"
 
 constexpr float PI = 3.14159265358979323846f;
 static constexpr auto tet_strip = std::array<uint16_t, 6> {0, 1, 2, 3, 0, 1};
@@ -186,31 +185,13 @@ bool Application::onInit() {
 }
 void Application::createBuffers()
 {
+	TetMeshBuffer buf;
 	Queue queue = m_device.getQueue();
-	m_vertices.push_back({.5,.5,.5});
-	m_vertices.push_back({0,0,1});
-	m_vertices.push_back({0,1,0});
-	m_vertices.push_back({0,1,0});
-	m_tetVerts.push_back({0,1,2,3});
+	m_tet_mesh_buffer = make_tet_mesh_buffer(m_device);
+	m_tet_verts_buffer = TetVertsBuffer(m_device, m_tet_mesh_buffer.n_tets());
 
 
 	BufferDescriptor bufferDesc;
-	bufferDesc.size = m_tetVerts.size() * sizeof(m_tetVerts.front());
-	bufferDesc.usage = BufferUsage::CopyDst | BufferUsage::Storage;
-	bufferDesc.mappedAtCreation = false;
-	m_tetVertBuffer = m_device.createBuffer(bufferDesc);
-	queue.writeBuffer(m_tetVertBuffer, 0, m_tetVerts.data(), bufferDesc.size);
-
-	bufferDesc.size = m_vertices.size() * sizeof(m_vertices.front());
-	bufferDesc.usage = BufferUsage::CopyDst | BufferUsage::Storage;
-	bufferDesc.mappedAtCreation = false;
-	m_vertexBuffer = m_device.createBuffer(bufferDesc);
-	queue.writeBuffer(m_vertexBuffer, 0, m_vertices.data(), bufferDesc.size);
-
-	bufferDesc.size = m_tetVerts.size() * 4 * 4 * sizeof(float);
-	bufferDesc.usage = BufferUsage::Storage;
-	bufferDesc.mappedAtCreation = false;
-	m_tetVertPosBuffer = m_device.createBuffer(bufferDesc);
 
 	// Create uniform buffer
 	bufferDesc.size = sizeof(MyUniforms);
@@ -243,7 +224,7 @@ void Application::createBuffers()
 void Application::buildRenderPipeline() {
 
 	// Create binding layout
-	m_bindingLayoutEntries.resize(2, Default);
+	m_bindingLayoutEntries.resize(1, Default);
 
 	BindGroupLayoutEntry& bindingLayout = m_bindingLayoutEntries[0];
 	bindingLayout.binding = 0;
@@ -251,46 +232,16 @@ void Application::buildRenderPipeline() {
 	bindingLayout.buffer.type = BufferBindingType::Uniform;
 	bindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
 
-	BindGroupLayoutEntry& vertexPosBindingLayout = m_bindingLayoutEntries[1];
-	vertexPosBindingLayout.binding = 1;
-	vertexPosBindingLayout.visibility = ShaderStage::Vertex | ShaderStage::Fragment;
-	vertexPosBindingLayout.buffer.type = BufferBindingType::ReadOnlyStorage;
-
-
 	// Create bindings
-	m_bindings.resize(2);
+	m_bindings.resize(1);
 
 	m_bindings[0].binding = 0;
 	m_bindings[0].buffer = m_uniformBuffer;
 	m_bindings[0].offset = 0;
 	m_bindings[0].size = sizeof(MyUniforms);
 
-	m_bindings[1].binding = 1;
-	m_bindings[1].buffer = m_tetVertPosBuffer;
-	m_bindings[1].offset = 0;
-	m_bindings[1].size = m_tetVerts.size() * 4 * 4 * sizeof(float);
-
-
-
 	std::cout << "Creating render pipeline..." << std::endl;
 	RenderPipelineDescriptor pipelineDesc{};
-
-#if 0
-	// Vertex fetch
-	std::vector<VertexAttribute> vertexAttribs(1);
-
-	// tet vertex indices
-	vertexAttribs[0].shaderLocation = 0;
-	vertexAttribs[0].format = VertexFormat::Uint32x4;
-	vertexAttribs[0].offset = 0;
-
-
-	VertexBufferLayout vertexBufferLayout;
-	vertexBufferLayout.attributeCount = 0;
-	vertexBufferLayout.attributes = nullptr;
-	vertexBufferLayout.arrayStride = 0;
-	vertexBufferLayout.stepMode = VertexStepMode::Vertex;
-#endif
 
 	pipelineDesc.vertex.bufferCount = 0;
 	pipelineDesc.vertex.buffers = nullptr;
@@ -349,10 +300,14 @@ void Application::buildRenderPipeline() {
 	bindGroupLayoutDesc.entries = m_bindingLayoutEntries.data();
 	BindGroupLayout bindGroupLayout = m_device.createBindGroupLayout(bindGroupLayoutDesc);
 
+	std::array<WGPUBindGroupLayout, 2> layouts = {
+		bindGroupLayout,
+		(WGPUBindGroupLayout&)m_tet_verts_buffer.bind_group_read().layout};
+
 	// Create the pipeline layout
 	PipelineLayoutDescriptor layoutDesc{};
-	layoutDesc.bindGroupLayoutCount = 1;
-	layoutDesc.bindGroupLayouts = &static_cast<WGPUBindGroupLayout&>(bindGroupLayout);
+	layoutDesc.bindGroupLayoutCount = 2;
+	layoutDesc.bindGroupLayouts = &layouts.front();
 	PipelineLayout layout = m_device.createPipelineLayout(layoutDesc);
 	pipelineDesc.layout = layout;
 
@@ -368,60 +323,15 @@ void Application::buildRenderPipeline() {
 }
 void Application::buildComputePipeline() {
 
-	m_compute_bindingLayoutEntries.resize(3, Default);
-
-	BindGroupLayoutEntry& bindingLayout_vpos = m_compute_bindingLayoutEntries[0];
-	bindingLayout_vpos.binding = 0;
-	bindingLayout_vpos.visibility = ShaderStage::Compute;
-	bindingLayout_vpos.buffer.type = BufferBindingType::ReadOnlyStorage;
-	//bindingLayout_vpos.buffer.minBindingSize = m_vertices.size() * sizeof(m_vertices.front());
-
-	BindGroupLayoutEntry& bindingLayout_tet = m_compute_bindingLayoutEntries[1];
-	bindingLayout_tet.binding = 1;
-	bindingLayout_tet.visibility = ShaderStage::Compute;
-	bindingLayout_tet.buffer.type = BufferBindingType::ReadOnlyStorage;
-	//bindingLayout_tet.buffer.minBindingSize = m_tetVerts.size() * sizeof(m_tetVerts.front());
-
-	BindGroupLayoutEntry& bindingLayout_write = m_compute_bindingLayoutEntries[2];
-	bindingLayout_write.binding = 2;
-	bindingLayout_write.visibility = ShaderStage::Compute;
-	bindingLayout_write.buffer.type = BufferBindingType::Storage;
-	//bindingLayout_write.buffer.minBindingSize = m_tetVerts.size() * 4 * 4 * sizeof(float);
-
-	BindGroupLayoutDescriptor bindGroupLayoutDesc{};
-	bindGroupLayoutDesc.entryCount = (uint32_t)m_compute_bindingLayoutEntries.size();
-	bindGroupLayoutDesc.entries = m_compute_bindingLayoutEntries.data();
-	BindGroupLayout bindGroupLayout = m_device.createBindGroupLayout(bindGroupLayoutDesc);
-
-	// Create bindings
-	m_compute_bindings.resize(3);
-
-	m_compute_bindings[0].binding = 0;
-	m_compute_bindings[0].buffer = m_vertexBuffer;
-	m_compute_bindings[0].offset = 0;
-	m_compute_bindings[0].size = m_vertices.size() * sizeof(m_vertices.front());
-
-	m_compute_bindings[1].binding = 1;
-	m_compute_bindings[1].buffer = m_tetVertBuffer;
-	m_compute_bindings[1].offset = 0;
-	m_compute_bindings[1].size = m_tetVerts.size() * sizeof(m_tetVerts.front());
-
-	m_compute_bindings[2].binding = 2;
-	m_compute_bindings[2].buffer = m_tetVertPosBuffer;
-	m_compute_bindings[2].offset = 0;
-	m_compute_bindings[2].size = m_tetVerts.size() * 4 * 4 * sizeof(float);
-
-
-	BindGroupDescriptor bindGroupDesc{};
-	bindGroupDesc.layout = bindGroupLayout;
-	bindGroupDesc.entryCount = (uint32_t)m_compute_bindings.size();
-	bindGroupDesc.entries = m_compute_bindings.data();
-	m_computeBindGroup = m_device.createBindGroup(bindGroupDesc);
-
 	//BindGroupLayout bindGroupLayout = m_device.createBindGroupLayout(bindGroupLayoutDesc);
+	std::array<WGPUBindGroupLayout, 2> layouts = {
+		(WGPUBindGroupLayout&)m_tet_mesh_buffer.bind_group().layout,
+		(WGPUBindGroupLayout&)m_tet_verts_buffer.bind_group_write().layout};
+
 	PipelineLayoutDescriptor pipelineLayoutDesc;
-	pipelineLayoutDesc.bindGroupLayoutCount = 1;
-	pipelineLayoutDesc.bindGroupLayouts = (WGPUBindGroupLayout*)&bindGroupLayout;
+	pipelineLayoutDesc.bindGroupLayoutCount = 2;
+	pipelineLayoutDesc.bindGroupLayouts = &layouts.front();
+
 
 	ComputePipelineDescriptor pipelineDesc;
 	pipelineDesc.compute.entryPoint = "computeTetVerts";
@@ -491,10 +401,12 @@ void Application::onCompute() {
 	ComputePassEncoder computePass = encoder.beginComputePass(computePassDesc);
 
 	computePass.setPipeline(m_compute_pipeline);
-	computePass.setBindGroup(0, m_computeBindGroup, 0, nullptr);
+	computePass.setBindGroup(0, m_tet_mesh_buffer.bind_group().group, 0, nullptr);
+	computePass.setBindGroup(1, m_tet_verts_buffer.bind_group_write().group, 0, nullptr);
 	//computePass.dispatchWorkgroups(m_tetVerts.size(),1,1);
-	uint32_t wg_size = 32;
-	uint32_t wg_count = (m_tetVerts.size() +wg_size-1)/ wg_size;
+	const auto n_tets = m_tet_mesh_buffer.n_tets();
+	const uint32_t wg_size = 32;
+	const uint32_t wg_count = (n_tets + wg_size-1)/ wg_size;
 	computePass.dispatchWorkgroups(wg_count,1,1);
 	// Use compute pass
 
@@ -519,6 +431,7 @@ void Application::onCompute() {
 	std::cout << "onCompute submitted" << std::endl;
 }
 void Application::onFrame() {
+	//std::cout << "onFrame" << std::endl;
 	glfwPollEvents();
 	Queue queue = m_device.getQueue();
 
@@ -570,9 +483,10 @@ void Application::onFrame() {
 	renderPass.setIndexBuffer(m_indexBuffer, IndexFormat::Uint16, 0, tet_strip.size() * sizeof(tet_strip.front()));
 	//renderPass.setVertexBuffer(0, m_tetVerts, 0, m_tetVerts.size() * sizeof(m_tetVerts.begin()));
 	renderPass.setBindGroup(0, m_renderBindGroup, 0, nullptr);
+	renderPass.setBindGroup(1, m_tet_verts_buffer.bind_group_read().group, 0, nullptr);
 
 	//void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t baseVertex, uint32_t firstInstance);
-	renderPass.drawIndexed(tet_strip.size(), m_tetVerts.size(), 0, 0, 0);
+	renderPass.drawIndexed(tet_strip.size(), m_tet_mesh_buffer.n_tets(), 0, 0, 0);
 
 	updateGui(renderPass);
 
