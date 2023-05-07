@@ -2,6 +2,8 @@
 #include <webgpu.hpp>
 #include <wgpu.h>
 #include <vector>
+#include <filesystem>
+#include <fstream>
 
 // Martin's abstraction layer
 // Give up a lot of flexibility for some convenience.
@@ -90,6 +92,59 @@ public:
 private:
     std::vector<wgpu::BindGroupLayoutEntry> layout_entries_;
     std::vector<wgpu::BindGroupEntry> binding_entries_;
+};
+
+
+class ShaderLoader
+{
+    using path = std::filesystem::path;
+public:
+    ShaderLoader() = default;
+    ShaderLoader(wgpu::Device &_device, const path& _common_path)
+        : device_(_device)
+        , common_src_{slurp(_common_path)}
+        , desc_common_{WGPUShaderModuleWGSLDescriptor{
+            .chain = {.next = nullptr,
+                .sType = wgpu::SType::ShaderModuleWGSLDescriptor,},
+            .code=common_src_.c_str()
+        }}
+    {
+    }
+
+    wgpu::ShaderModule load(const path& _path)
+    {
+        auto source = common_src_ + slurp(_path);
+        auto wgsl_desc = WGPUShaderModuleWGSLDescriptor{
+            .chain = {
+                .next = nullptr,//&desc_common_.chain,
+                .sType = wgpu::SType::ShaderModuleWGSLDescriptor,
+            },
+            .code = source.c_str(),
+        };
+        auto desc = WGPUShaderModuleDescriptor{
+            .nextInChain = &wgsl_desc.chain,
+            //.label=_path.c_str(),
+            .hintCount = 0,
+            .hints = nullptr,
+        };
+        return wgpuDeviceCreateShaderModule(device_, &desc);
+    }
+private:
+    static std::string slurp(const path &_path) {
+        std::ifstream file(_path);
+        if (!file.is_open()) {
+            throw std::runtime_error("cant open shader file " + _path.string());
+        }
+        file.seekg(0, std::ios::end);
+        size_t size = file.tellg();
+        std::string contents(size, ' ');
+        file.seekg(0);
+        file.read(contents.data(), size);
+        return contents;
+    }
+    wgpu::Device device_ = nullptr;
+    std::string common_src_;
+    wgpu::ShaderModuleWGSLDescriptor desc_common_;
 };
 
 } // namespace MAL

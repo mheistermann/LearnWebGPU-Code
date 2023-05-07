@@ -1,0 +1,32 @@
+struct TetVerts {
+	idx: vec4<u32>,
+}
+struct VertexPos {
+	pos: vec3<f32>,
+}
+
+struct TetVertsPos {
+	pos: array<vec4<f32>, 4>,
+}
+
+struct TetPrecomputeData {
+	baca: vec3<f32>, // (b-a) x (c-a)
+	cdbd: vec3<f32>,
+	daba: vec3<f32>,
+	cada: vec3<f32>,
+}
+
+struct TetPrecomputeDataViewDep {
+	cramer_t_nom: vec4<f32>,
+}
+struct VertexOutput {
+	@builtin(position) position: vec4<f32>,
+}
+
+struct MyUniforms {
+       projectionMatrix: mat4x4<f32>,
+       viewMatrix: mat4x4<f32>,
+       modelMatrix: mat4x4<f32>,
+       color: vec4<f32>,
+       time: f32,
+}

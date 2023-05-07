@@ -163,11 +163,13 @@ bool Application::onInit() {
 	buildSwapChain();
 
 
-	std::cout << "Creating shader module..." << std::endl;
-	m_shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/shader.wsl", m_device);
-	std::cout << "Shader module: " << m_shaderModule << std::endl;
-	//m_compute_shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/compute.wsl", m_device);
-	std::cout << "Shader module: " << m_compute_shaderModule << std::endl;
+	m_shaderLoader = MAL::ShaderLoader{m_device, RESOURCE_DIR "/shaders/common.wsl"};
+	std::cout << "Creating shader modules..." << std::endl;
+	//m_shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/shader.wsl", m_device);
+	m_vertex_shader= m_shaderLoader.load(RESOURCE_DIR "/shaders/vertex.wsl");
+	m_compute_shader= m_shaderLoader.load(RESOURCE_DIR "/shaders/compute.wsl");
+	m_fragment_shader = m_shaderLoader.load(RESOURCE_DIR "/shaders/fragment.wsl");
+	//std::cout << "Shader module: " << m_compute_shaderModule << std::endl;
 
 
 	std::cout << "Creating buffers..." << std::endl;
@@ -246,7 +248,7 @@ void Application::buildRenderPipeline() {
 	pipelineDesc.vertex.bufferCount = 0;
 	pipelineDesc.vertex.buffers = nullptr;
 
-	pipelineDesc.vertex.module = m_shaderModule;
+	pipelineDesc.vertex.module = m_vertex_shader;
 	pipelineDesc.vertex.entryPoint = "vs_main";
 	pipelineDesc.vertex.constantCount = 0;
 	pipelineDesc.vertex.constants = nullptr;
@@ -258,7 +260,7 @@ void Application::buildRenderPipeline() {
 
 	FragmentState fragmentState{};
 	pipelineDesc.fragment = &fragmentState;
-	fragmentState.module = m_shaderModule;
+	fragmentState.module = m_fragment_shader;
 	fragmentState.entryPoint = "fs_main";
 	fragmentState.constantCount = 0;
 	fragmentState.constants = nullptr;
@@ -335,7 +337,7 @@ void Application::buildComputePipeline() {
 
 	ComputePipelineDescriptor pipelineDesc;
 	pipelineDesc.compute.entryPoint = "computeTetVerts";
-	pipelineDesc.compute.module = m_shaderModule;
+	pipelineDesc.compute.module = m_compute_shader;
 	pipelineDesc.layout = m_device.createPipelineLayout(pipelineLayoutDesc);
 	m_compute_pipeline = m_device.createComputePipeline(pipelineDesc);
 	std::cout << "Render pipeline: " << m_pipeline << std::endl;

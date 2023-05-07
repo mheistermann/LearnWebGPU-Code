@@ -91,8 +91,11 @@ private:
 
 	// Everything that is initialized in `onInit` and needed in `onFrame`.
 	GLFWwindow* m_window = nullptr;
-	wgpu::ShaderModule m_shaderModule = nullptr;
-	wgpu::ShaderModule m_compute_shaderModule = nullptr;
+
+	MAL::ShaderLoader m_shaderLoader;
+	wgpu::ShaderModule m_fragment_shader = nullptr;
+	wgpu::ShaderModule m_vertex_shader = nullptr;
+	wgpu::ShaderModule m_compute_shader = nullptr;
 	wgpu::Instance m_instance = nullptr;
 	wgpu::Surface m_surface = nullptr;
 	wgpu::TextureFormat m_swapChainFormat = wgpu::TextureFormat::Undefined;
