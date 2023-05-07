@@ -1,0 +1,32 @@
+@group(0) @binding(0) var<storage,read> inbuf_vpos: array<vec3<f32>>;
+@group(0) @binding(1) var<storage,read> inbuf_tet: array<TetVerts>;
+// only written to, but there seems to be no write-only binding type for buffers:
+@group(1) @binding(0) var<storage,read_write> outbuf_tet_precomp : array<TetPrecomputeData>;
+
+@compute @workgroup_size(32)
+fn computeTetVerts(
+	@builtin(global_invocation_id) id: vec3<u32>)
+{
+	// TOOD: shrink, etc
+	let tet_id = id.x;
+	let vids = inbuf_tet[tet_id].idx;
+	var tmp: TetPrecomputeData;
+	for(var i:i32 = 0; i < 4; i++) {
+		tmp.pos[i] = vec3<f32>(inbuf_vpos[vids[i]]);
+	}
+
+	let a = tmp.pos[0];
+	let b = tmp.pos[1];
+	let c = tmp.pos[2];
+	let d = tmp.pos[3];
+	let ba = b-a;
+	let ca = c-a;
+	let da = d-a;
+	let cd = c-d;
+	let bd = b-d;
+	tmp.baca = cross(ba, ca);
+	tmp.cdbd = cross(cd, bd);
+	tmp.daba = cross(da, ba);
+	tmp.cada = cross(ca, da);
+	outbuf_tet_precomp[tet_id] = tmp;
+}

@@ -167,7 +167,7 @@ bool Application::onInit() {
 	std::cout << "Creating shader modules..." << std::endl;
 	//m_shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/shader.wsl", m_device);
 	m_vertex_shader= m_shaderLoader.load(RESOURCE_DIR "/shaders/vertex.wsl");
-	m_compute_shader= m_shaderLoader.load(RESOURCE_DIR "/shaders/compute.wsl");
+	m_compute_shader= m_shaderLoader.load(RESOURCE_DIR "/shaders/compute_view_indep.wsl");
 	m_fragment_shader = m_shaderLoader.load(RESOURCE_DIR "/shaders/fragment.wsl");
 	//std::cout << "Shader module: " << m_compute_shaderModule << std::endl;
 

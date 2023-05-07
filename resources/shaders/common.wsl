@@ -1,15 +1,9 @@
 struct TetVerts {
 	idx: vec4<u32>,
 }
-struct VertexPos {
-	pos: vec3<f32>,
-}
-
-struct TetVertsPos {
-	pos: array<vec4<f32>, 4>,
-}
 
 struct TetPrecomputeData {
+	pos: array<vec3<f32>, 4>,
 	baca: vec3<f32>, // (b-a) x (c-a)
 	cdbd: vec3<f32>,
 	daba: vec3<f32>,

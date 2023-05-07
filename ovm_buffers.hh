@@ -55,17 +55,14 @@ inline TetMeshBuffer make_tet_mesh_buffer(wgpu::Device &_device,
 
 // computed by compute pipeline, used in render pipeline
 class TetVertsBuffer {
-    struct Entry {
-        std::array<Vec4, 4> positions;
-        // TODO: 4 vectors of 3 gets padded to 4 of 4 in shader size, why?
-    };
+    static const size_t entry_size = 128;
 public:
     TetVertsBuffer() = default;
     TetVertsBuffer(wgpu::Device &_device, size_t n_tets)
         : buffer_(_device, {
                 .nextInChain = nullptr,
                 .label = "TetVertsBuffer",
-                .size = n_tets * sizeof(Entry),
+                .size = n_tets * entry_size,
                 .usage = wgpu::BufferUsage::Storage,
                 })
         , bind_group_read_{MAL::BindGroupBuilder()

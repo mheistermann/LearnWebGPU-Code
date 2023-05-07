@@ -4,7 +4,7 @@
 
 // Instead of the simple uTime variable, our uniform variable is a struct
 @group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
-@group(1) @binding(0) var<storage,read> inbuf_tet_verts: array<TetVertsPos>;
+@group(1) @binding(0) var<storage,read> inbuf_tet_precomp: array<TetPrecomputeData>;
 
 
 @vertex
@@ -13,8 +13,9 @@ fn vs_main(
 	@builtin(instance_index) in_instance_index: u32,
 ) -> VertexOutput {
 	var out: VertexOutput;
-	let vpos = inbuf_tet_verts[in_instance_index].pos[in_vertex_index];
-	out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vpos;
+    let vpos = inbuf_tet_precomp[in_instance_index].pos[in_vertex_index];
+    // TODO PERF: pass multiplied matrices
+	out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vec4<f32>(vpos,1.);
 	return out;
 }
 
