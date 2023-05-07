@@ -35,6 +35,7 @@
 
 #include <array>
 #include <filesystem>
+#include "ovm_buffers.hh"
 
 class Application {
 public:

@@ -50,9 +50,14 @@
 #include <sstream>
 #include <string>
 #include <array>
+#include "mal.hh"
 
 constexpr float PI = 3.14159265358979323846f;
 static constexpr auto tet_strip = std::array<uint16_t, 6> {0, 1, 2, 3, 0, 1};
+
+
+
+
 
 using namespace wgpu;
 using VertexAttributes = ResourceManager::VertexAttributes;
