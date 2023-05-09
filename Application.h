@@ -35,6 +35,7 @@
 #include <filesystem>
 #include "ovm_buffers.hh"
 #include "PipelineComputeViewIndependent.hh"
+#include "PipelineComputeViewDependent.hh"
 
 class Application {
 public:
@@ -92,6 +93,7 @@ private:
 
     std::shared_ptr<MAL::RenderContext> m_context;
     PipelineComputeViewIndependent m_pipeline_compute_view_indep;
+    PipelineComputeViewDependent m_pipeline_compute_view_dep;
 
 	wgpu::ShaderModule m_fragment_shader = nullptr;
 	wgpu::ShaderModule m_vertex_shader = nullptr;
@@ -109,6 +111,7 @@ private:
 
     std::shared_ptr<TetMeshBuffer> m_tet_mesh_buffer;
     std::shared_ptr<TetVertsBuffer> m_tet_verts_buffer;
+    std::shared_ptr<TetPrecomputeViewDepBuffer> m_tet_precompute_viewdep_buffer;
 	
 
 	wgpu::BindGroup m_renderBindGroup = nullptr;

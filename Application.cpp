@@ -174,10 +174,14 @@ bool Application::onInit() {
 	std::cout << "Creating buffers..." << std::endl;
 	createBuffers();
 
-	std::cout << "Creating compute pipelines..." << std::endl;
+	std::cout << "Creating compute pipeline: view indep..." << std::endl;
     m_pipeline_compute_view_indep = PipelineComputeViewIndependent(m_context,
             m_tet_mesh_buffer,
             m_tet_verts_buffer);
+	std::cout << "Creating compute pipeline: view dependent..." << std::endl;
+    m_pipeline_compute_view_dep = PipelineComputeViewDependent(m_context,
+            m_tet_verts_buffer,
+            m_tet_precompute_viewdep_buffer);
 
 
 	std::cout << "Creating render pipeline..." << std::endl;
@@ -193,6 +197,7 @@ void Application::createBuffers()
 	Queue queue = m_device.getQueue();
 	m_tet_mesh_buffer = make_tet_mesh_buffer(m_device);
 	m_tet_verts_buffer = std::make_shared<TetVertsBuffer>(m_device, m_tet_mesh_buffer->n_tets());
+	m_tet_precompute_viewdep_buffer = std::make_shared<TetPrecomputeViewDepBuffer>(m_device, m_tet_mesh_buffer->n_tets());
 
 
 	BufferDescriptor bufferDesc;
