@@ -19,7 +19,6 @@ public:
         , m_compute_shader(context_->shader_loader().load(RESOURCE_DIR "/shaders/compute_view_indep.wsl"))
     {
         auto device = context_->device();
-        //BindGroupLayout bindGroupLayout = m_device.createBindGroupLayout(bindGroupLayoutDesc);
         std::array<WGPUBindGroupLayout, 2> layouts = {
             (WGPUBindGroupLayout&)tet_mesh_buffer_->bind_group().layout,
             (WGPUBindGroupLayout&)tet_verts_buffer_->bind_group_write().layout};
@@ -53,14 +52,10 @@ public:
         computePass.setPipeline(pipeline_);
         computePass.setBindGroup(0, tet_mesh_buffer_->bind_group().group, 0, nullptr);
         computePass.setBindGroup(1, tet_verts_buffer_->bind_group_write().group, 0, nullptr);
-        //computePass.dispatchWorkgroups(m_tetVerts.size(),1,1);
         const auto n_tets = tet_mesh_buffer_->n_tets();
         const uint32_t wg_size = 32;
         const uint32_t wg_count = (n_tets + wg_size-1)/ wg_size;
         computePass.dispatchWorkgroups(wg_count,1,1);
-        // Use compute pass
-
-        // Finalize compute pass
         computePass.end();
 
     // Clean up
