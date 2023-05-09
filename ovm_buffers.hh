@@ -108,7 +108,7 @@ public:
                 })
         , bind_group_read_{MAL::BindGroupBuilder()
             .add_buffer(buffer_,
-                    wgpu::ShaderStage::Compute | wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment,
+                    wgpu::ShaderStage::Fragment,
                     wgpu::BufferBindingType::ReadOnlyStorage)
             .build(_device)}
         , bind_group_write_{MAL::BindGroupBuilder()

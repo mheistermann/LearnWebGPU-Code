@@ -1,9 +1,15 @@
 @group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
+@group(1) @binding(0) var<storage,read> inbuf_tet_precomp: array<TetPrecomputeData>;
+@group(2) @binding(0) var<storage,read> inbuf_tet_precomp_viewdep : array<TetPrecomputeDataViewDep>;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 	// Combine texture and lighting
 	let color = vec3<f32>(0.8, 0.7, 0.6);
+    
+    let pci = inbuf_tet_precomp[in.tet_id];
+    let pcd = inbuf_tet_precomp_viewdep[in.tet_id];
+
 
 	// Gamma-correction
 	let corrected_color = pow(color, vec3<f32>(2.2));
