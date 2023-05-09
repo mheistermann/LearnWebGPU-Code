@@ -390,6 +390,8 @@ void Application::onFrame() {
 
 	updateDragInertia();
 
+    m_pipeline_compute_view_dep.run();
+
 	// Update uniform buffer
 	m_uniforms.time = static_cast<float>(glfwGetTime());
 	queue.writeBuffer(m_uniformBuffer, offsetof(MyUniforms, time), &m_uniforms.time, sizeof(MyUniforms::time));

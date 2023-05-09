@@ -12,7 +12,7 @@ fn computeViewDependent(
 	var pc = inbuf_tet_precomp[tet_id];
 	var tmp: TetPrecomputeDataViewDep;
 	var ctn: vec4<f32>;
-	let o = vec3<f32>(0.); //camera_origin;
+	let o = camera_origin;
 	let a = pc.pos[0];
 	let d = pc.pos[3];
 	outbuf_tet_precomp_viewdep[tet_id].cramer_t_nom = vec4<f32>(

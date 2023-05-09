@@ -45,9 +45,10 @@ public:
         uniforms_dirty_ = true;
     }
     void run() {
+        if (!uniforms_dirty_) return; // also need to re-run if input mesh changed
         maybe_upload_uniforms();
         auto device = context_->device();
-        std::cout << "onCompute()" << std::endl;
+        //std::cout << "onCompute()" << std::endl;
         // Initialize a command encoder
         wgpu::Queue queue = device.getQueue();
         wgpu::CommandEncoderDescriptor encoderDesc {wgpu::Default};
@@ -63,6 +64,7 @@ public:
         computePass.setPipeline(pipeline_);
         computePass.setBindGroup(0, tet_verts_buffer_->bind_group_read().group, 0, nullptr);
         computePass.setBindGroup(1, viewdep_buffer_->bind_group_write().group, 0, nullptr);
+        computePass.setBindGroup(2, uniforms_.bind_group().group, 0, nullptr);
         const auto n_tets = tet_verts_buffer_->n_tets();
         const uint32_t wg_size = 32;
         const uint32_t wg_count = (n_tets + wg_size-1)/ wg_size;
@@ -84,7 +86,7 @@ public:
         wgpuCommandEncoderRelease(encoder);
         wgpuQueueRelease(queue);
 #endif
-        std::cout << "onCompute submitted" << std::endl;
+        //std::cout << "onCompute submitted" << std::endl;
         }
 private:
     void maybe_upload_uniforms() {
