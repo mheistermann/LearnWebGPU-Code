@@ -309,13 +309,15 @@ void Application::buildRenderPipeline() {
 	bindGroupLayoutDesc.entries = m_bindingLayoutEntries.data();
 	BindGroupLayout bindGroupLayout = m_device.createBindGroupLayout(bindGroupLayoutDesc);
 
-	std::array<WGPUBindGroupLayout, 2> layouts = {
+	std::array<WGPUBindGroupLayout, 3> layouts = {
 		bindGroupLayout,
-		(WGPUBindGroupLayout&)m_tet_verts_buffer->bind_group_read().layout};
+		(WGPUBindGroupLayout&)m_tet_verts_buffer->bind_group_read().layout,
+		(WGPUBindGroupLayout&)m_tet_precompute_viewdep_buffer->bind_group_read().layout,
+    };
 
 	// Create the pipeline layout
 	PipelineLayoutDescriptor layoutDesc{};
-	layoutDesc.bindGroupLayoutCount = 2;
+	layoutDesc.bindGroupLayoutCount = layouts.size();
 	layoutDesc.bindGroupLayouts = &layouts.front();
 	PipelineLayout layout = m_device.createPipelineLayout(layoutDesc);
 	pipelineDesc.layout = layout;
@@ -433,6 +435,7 @@ void Application::onFrame() {
 	//renderPass.setVertexBuffer(0, m_tetVerts, 0, m_tetVerts.size() * sizeof(m_tetVerts.begin()));
 	renderPass.setBindGroup(0, m_renderBindGroup, 0, nullptr);
 	renderPass.setBindGroup(1, m_tet_verts_buffer->bind_group_read().group, 0, nullptr);
+	renderPass.setBindGroup(2, m_tet_precompute_viewdep_buffer->bind_group_read().group, 0, nullptr);
 
 	//void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t baseVertex, uint32_t firstInstance);
 	renderPass.drawIndexed(tet_strip.size(), m_tet_mesh_buffer->n_tets(), 0, 0, 0);

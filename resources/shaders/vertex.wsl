@@ -5,6 +5,7 @@
 // Instead of the simple uTime variable, our uniform variable is a struct
 @group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
 @group(1) @binding(0) var<storage,read> inbuf_tet_precomp: array<TetPrecomputeData>;
+@group(2) @binding(0) var<storage,read> inbuf_tet_precomp_viewdep : array<TetPrecomputeDataViewDep>;
 
 
 @vertex

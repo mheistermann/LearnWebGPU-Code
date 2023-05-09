@@ -2,7 +2,7 @@
 
 @group(0) @binding(0) var<storage,read> inbuf_tet_precomp : array<TetPrecomputeData>;
 @group(1) @binding(0) var<storage,read_write> outbuf_tet_precomp_viewdep : array<TetPrecomputeDataViewDep>;
-//@group(2) @binding(0) var<uniform> camera_origin : vec3<f32>;
+@group(2) @binding(0) var<uniform> camera_origin : vec3<f32>;
 
 @compute @workgroup_size(32)
 fn computeViewDependent(
