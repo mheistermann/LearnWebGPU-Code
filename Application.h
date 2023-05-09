@@ -26,8 +26,6 @@
 
 #pragma once
 
-#include "ResourceManager.h"
-
 #include <webgpu.hpp>
 #include <GLFW/glfw3.h>
 
@@ -36,6 +34,7 @@
 #include <array>
 #include <filesystem>
 #include "ovm_buffers.hh"
+#include "PipelineComputeViewIndependent.hh"
 
 class Application {
 public:
@@ -67,7 +66,6 @@ private:
 	void updateDragInertia();
 
 	void createBuffers();
-	void buildComputePipeline();
 	void buildRenderPipeline();
 
 	void initGui(); // called in onInit
@@ -92,10 +90,11 @@ private:
 	// Everything that is initialized in `onInit` and needed in `onFrame`.
 	GLFWwindow* m_window = nullptr;
 
-	MAL::ShaderLoader m_shaderLoader;
+    std::shared_ptr<MAL::RenderContext> m_context;
+    PipelineComputeViewIndependent m_pipeline_compute_view_indep;
+
 	wgpu::ShaderModule m_fragment_shader = nullptr;
 	wgpu::ShaderModule m_vertex_shader = nullptr;
-	wgpu::ShaderModule m_compute_shader = nullptr;
 	wgpu::Instance m_instance = nullptr;
 	wgpu::Surface m_surface = nullptr;
 	wgpu::TextureFormat m_swapChainFormat = wgpu::TextureFormat::Undefined;
@@ -108,8 +107,8 @@ private:
 	wgpu::RenderPipeline m_pipeline = nullptr;
 	wgpu::ComputePipeline m_compute_pipeline = nullptr;
 
-	TetMeshBuffer m_tet_mesh_buffer;
-	TetVertsBuffer m_tet_verts_buffer;
+    std::shared_ptr<TetMeshBuffer> m_tet_mesh_buffer;
+    std::shared_ptr<TetVertsBuffer> m_tet_verts_buffer;
 	
 
 	wgpu::BindGroup m_renderBindGroup = nullptr;

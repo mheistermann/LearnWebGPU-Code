@@ -163,20 +163,22 @@ bool Application::onInit() {
 	buildSwapChain();
 
 
-	m_shaderLoader = MAL::ShaderLoader{m_device, RESOURCE_DIR "/shaders/common.wsl"};
+    m_context = std::make_shared<MAL::RenderContext>(m_device);
 	std::cout << "Creating shader modules..." << std::endl;
 	//m_shaderModule = ResourceManager::loadShaderModule(RESOURCE_DIR "/shader.wsl", m_device);
-	m_vertex_shader= m_shaderLoader.load(RESOURCE_DIR "/shaders/vertex.wsl");
-	m_compute_shader= m_shaderLoader.load(RESOURCE_DIR "/shaders/compute_view_indep.wsl");
-	m_fragment_shader = m_shaderLoader.load(RESOURCE_DIR "/shaders/fragment.wsl");
+	m_vertex_shader= m_context->shader_loader().load(RESOURCE_DIR "/shaders/vertex.wsl");
+	m_fragment_shader = m_context->shader_loader().load(RESOURCE_DIR "/shaders/fragment.wsl");
 	//std::cout << "Shader module: " << m_compute_shaderModule << std::endl;
 
 
 	std::cout << "Creating buffers..." << std::endl;
 	createBuffers();
 
-	std::cout << "Creating compute pipeline..." << std::endl;
-	buildComputePipeline();
+	std::cout << "Creating compute pipelines..." << std::endl;
+    m_pipeline_compute_view_indep = PipelineComputeViewIndependent(m_context,
+            m_tet_mesh_buffer,
+            m_tet_verts_buffer);
+
 
 	std::cout << "Creating render pipeline..." << std::endl;
 	buildRenderPipeline();
@@ -190,7 +192,7 @@ void Application::createBuffers()
 	TetMeshBuffer buf;
 	Queue queue = m_device.getQueue();
 	m_tet_mesh_buffer = make_tet_mesh_buffer(m_device);
-	m_tet_verts_buffer = TetVertsBuffer(m_device, m_tet_mesh_buffer.n_tets());
+	m_tet_verts_buffer = std::make_shared<TetVertsBuffer>(m_device, m_tet_mesh_buffer->n_tets());
 
 
 	BufferDescriptor bufferDesc;
@@ -304,7 +306,7 @@ void Application::buildRenderPipeline() {
 
 	std::array<WGPUBindGroupLayout, 2> layouts = {
 		bindGroupLayout,
-		(WGPUBindGroupLayout&)m_tet_verts_buffer.bind_group_read().layout};
+		(WGPUBindGroupLayout&)m_tet_verts_buffer->bind_group_read().layout};
 
 	// Create the pipeline layout
 	PipelineLayoutDescriptor layoutDesc{};
@@ -322,25 +324,6 @@ void Application::buildRenderPipeline() {
 	bindGroupDesc.entryCount = (uint32_t)m_bindings.size();
 	bindGroupDesc.entries = m_bindings.data();
 	m_renderBindGroup = m_device.createBindGroup(bindGroupDesc);
-}
-void Application::buildComputePipeline() {
-
-	//BindGroupLayout bindGroupLayout = m_device.createBindGroupLayout(bindGroupLayoutDesc);
-	std::array<WGPUBindGroupLayout, 2> layouts = {
-		(WGPUBindGroupLayout&)m_tet_mesh_buffer.bind_group().layout,
-		(WGPUBindGroupLayout&)m_tet_verts_buffer.bind_group_write().layout};
-
-	PipelineLayoutDescriptor pipelineLayoutDesc;
-	pipelineLayoutDesc.bindGroupLayoutCount = 2;
-	pipelineLayoutDesc.bindGroupLayouts = &layouts.front();
-
-
-	ComputePipelineDescriptor pipelineDesc;
-	pipelineDesc.compute.entryPoint = "computeTetVerts";
-	pipelineDesc.compute.module = m_compute_shader;
-	pipelineDesc.layout = m_device.createPipelineLayout(pipelineLayoutDesc);
-	m_compute_pipeline = m_device.createComputePipeline(pipelineDesc);
-	std::cout << "Render pipeline: " << m_pipeline << std::endl;
 }
 
 void Application::buildSwapChain() {
@@ -389,48 +372,7 @@ void Application::buildDepthBuffer() {
 }
 
 void Application::onCompute() {
-	std::cout << "onCompute()" << std::endl;
-	// Initialize a command encoder
-    Queue queue = m_device.getQueue();
-    CommandEncoderDescriptor encoderDesc = Default;
-    CommandEncoder encoder = m_device.createCommandEncoder(encoderDesc);
-
-    // Create and use compute pass here!
-	//
-	ComputePassDescriptor computePassDesc;
-	computePassDesc.timestampWriteCount = 0;
-	computePassDesc.timestampWrites = nullptr;
-	ComputePassEncoder computePass = encoder.beginComputePass(computePassDesc);
-
-	computePass.setPipeline(m_compute_pipeline);
-	computePass.setBindGroup(0, m_tet_mesh_buffer.bind_group().group, 0, nullptr);
-	computePass.setBindGroup(1, m_tet_verts_buffer.bind_group_write().group, 0, nullptr);
-	//computePass.dispatchWorkgroups(m_tetVerts.size(),1,1);
-	const auto n_tets = m_tet_mesh_buffer.n_tets();
-	const uint32_t wg_size = 32;
-	const uint32_t wg_count = (n_tets + wg_size-1)/ wg_size;
-	computePass.dispatchWorkgroups(wg_count,1,1);
-	// Use compute pass
-
-	// Finalize compute pass
-	computePass.end();
-
-// Clean up
-#if !defined(WEBGPU_BACKEND_WGPU)
-    wgpuComputePassEncoderRelease(computePass);
-#endif
-
-    // Encode and submit the GPU commands
-    CommandBuffer commands = encoder.finish(CommandBufferDescriptor{});
-    queue.submit(commands);
-
-    // Clean up
-#if !defined(WEBGPU_BACKEND_WGPU)
-    wgpuCommandBufferRelease(commands);
-    wgpuCommandEncoderRelease(encoder);
-    wgpuQueueRelease(queue);
-#endif
-	std::cout << "onCompute submitted" << std::endl;
+    m_pipeline_compute_view_indep.run();
 }
 void Application::onFrame() {
 	//std::cout << "onFrame" << std::endl;
@@ -485,10 +427,10 @@ void Application::onFrame() {
 	renderPass.setIndexBuffer(m_indexBuffer, IndexFormat::Uint16, 0, tet_strip.size() * sizeof(tet_strip.front()));
 	//renderPass.setVertexBuffer(0, m_tetVerts, 0, m_tetVerts.size() * sizeof(m_tetVerts.begin()));
 	renderPass.setBindGroup(0, m_renderBindGroup, 0, nullptr);
-	renderPass.setBindGroup(1, m_tet_verts_buffer.bind_group_read().group, 0, nullptr);
+	renderPass.setBindGroup(1, m_tet_verts_buffer->bind_group_read().group, 0, nullptr);
 
 	//void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t baseVertex, uint32_t firstInstance);
-	renderPass.drawIndexed(tet_strip.size(), m_tet_mesh_buffer.n_tets(), 0, 0, 0);
+	renderPass.drawIndexed(tet_strip.size(), m_tet_mesh_buffer->n_tets(), 0, 0, 0);
 
 	updateGui(renderPass);
 

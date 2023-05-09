@@ -141,4 +141,22 @@ private:
     std::string common_src_;
 };
 
+class RenderContext
+{
+public:
+    RenderContext(wgpu::Device _device)
+        : device_(_device)
+    {}
+    wgpu::Device device() const {
+        return device_;
+    }
+    ShaderLoader &shader_loader() {
+        return shader_loader_;
+    }
+private:
+
+    wgpu::Device device_ = nullptr;
+    ShaderLoader shader_loader_{device_, RESOURCE_DIR "/shaders/common.wsl"};
+};
+
 } // namespace MAL

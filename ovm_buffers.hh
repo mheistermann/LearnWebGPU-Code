@@ -41,7 +41,7 @@ public:
 };
 
 
-inline TetMeshBuffer make_tet_mesh_buffer(wgpu::Device &_device,
+inline std::shared_ptr<TetMeshBuffer> make_tet_mesh_buffer(wgpu::Device &_device,
             WGPUShaderStageFlags _visibility = wgpu::ShaderStage::Compute)
 {
     TetMeshData data;
@@ -50,7 +50,7 @@ inline TetMeshBuffer make_tet_mesh_buffer(wgpu::Device &_device,
     data.vertices.push_back({0,1,0});
     data.vertices.push_back({0,1,0});
     data.tets.push_back({0,1,2,3});
-    return TetMeshBuffer(_device, data, _visibility);
+    return std::make_shared<TetMeshBuffer>(_device, data, _visibility);
 }
 
 // computed by compute pipeline, used in render pipeline
