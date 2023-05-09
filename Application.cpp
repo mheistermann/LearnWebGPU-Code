@@ -187,6 +187,7 @@ bool Application::onInit() {
 	std::cout << "Creating render pipeline..." << std::endl;
 	buildRenderPipeline();
 
+    initUniforms();
 	initGui();
 
 	return true;
@@ -214,6 +215,12 @@ void Application::createBuffers()
 	m_indexBuffer = m_device.createBuffer(bufferDesc);
 	queue.writeBuffer(m_indexBuffer, 0, tet_strip.data(), tet_strip.size() * sizeof(tet_strip.front()));
 
+
+	buildDepthBuffer();
+
+
+}
+void Application::initUniforms() {
 	// Upload the initial value of the uniforms
 	m_uniforms.time = 1.0f;
 	m_uniforms.color = { 0.0f, 1.0f, 0.4f, 1.0f };
@@ -224,13 +231,10 @@ void Application::createBuffers()
 	m_uniforms.viewMatrix = glm::lookAt(campos, vec3(0.0f), vec3(0, 0, 1));
 	m_uniforms.projectionMatrix = glm::perspective(45 * PI / 180, 640.0f / 480.0f, 0.01f, 100.0f);
     m_uniforms.camera_in_object_space = campos;
+    m_pipeline_compute_view_dep.set_camera_in_object_space(campos);
 
-	queue.writeBuffer(m_uniformBuffer, 0, &m_uniforms, sizeof(MyUniforms));
+	m_device.getQueue().writeBuffer(m_uniformBuffer, 0, &m_uniforms, sizeof(MyUniforms));
 	updateViewMatrix();
-
-	buildDepthBuffer();
-
-
 }
 void Application::buildRenderPipeline() {
 

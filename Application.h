@@ -69,6 +69,7 @@ private:
 	void createBuffers();
 	void buildRenderPipeline();
 
+	void initUniforms();
 	void initGui(); // called in onInit
 	void updateGui(wgpu::RenderPassEncoder renderPass); // called in onFrame
 
