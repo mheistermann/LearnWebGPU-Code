@@ -8,6 +8,9 @@
 
 class PipelineComputeViewDependent
 {
+    struct Uniforms {
+        MAL::Vec3f camera_in_object_space = {0.f,0.f,0.f};
+    };
 public:
     PipelineComputeViewDependent() = default;
     PipelineComputeViewDependent(std::shared_ptr<MAL::RenderContext> _context,
@@ -16,23 +19,30 @@ public:
         : context_(std::move(_context))
         , tet_verts_buffer_(std::move(_tet_verts_buffer))
         , viewdep_buffer_(std::move(_viewdep_buffer))
-        , m_compute_shader(context_->shader_loader().load(RESOURCE_DIR "/shaders/compute_viewdep.wsl"))
+        , shader_(context_->shader_loader().load(RESOURCE_DIR "/shaders/compute_viewdep.wsl"))
+        , uniforms_{MAL::UniformBuffer<Uniforms>(context_->device(), wgpu::ShaderStage::Compute)}
     {
         auto device = context_->device();
-        std::array<WGPUBindGroupLayout, 2> layouts = {
+        std::array<WGPUBindGroupLayout, 3> layouts = {
             (WGPUBindGroupLayout&)tet_verts_buffer_->bind_group_read().layout,
-            (WGPUBindGroupLayout&)viewdep_buffer_->bind_group_write().layout};
+            (WGPUBindGroupLayout&)viewdep_buffer_->bind_group_write().layout,
+            (WGPUBindGroupLayout&)uniforms_.bind_group().layout,
+        };
 
         wgpu::PipelineLayoutDescriptor pipelineLayoutDesc;
-        pipelineLayoutDesc.bindGroupLayoutCount = 2;
+        pipelineLayoutDesc.bindGroupLayoutCount = layouts.size();
         pipelineLayoutDesc.bindGroupLayouts = &layouts.front();
 
 
         wgpu::ComputePipelineDescriptor pipelineDesc;
         pipelineDesc.compute.entryPoint = "computeViewDependent";
-        pipelineDesc.compute.module = m_compute_shader;
+        pipelineDesc.compute.module = shader_;
         pipelineDesc.layout = device.createPipelineLayout(pipelineLayoutDesc);
         pipeline_ = device.createComputePipeline(pipelineDesc);
+    }
+    void set_camera_in_object_space(std::array<float, 3> const &pos) {
+        uniforms_.u().camera_in_object_space.vec = pos;
+        uniforms_.upload();
     }
     void run() {
         auto device = context_->device();
@@ -80,6 +90,7 @@ private:
     std::shared_ptr<MAL::RenderContext> context_;
     std::shared_ptr<TetVertsBuffer> tet_verts_buffer_;
     std::shared_ptr<TetPrecomputeViewDepBuffer> viewdep_buffer_;
-    wgpu::ShaderModule m_compute_shader = nullptr;
+    wgpu::ShaderModule shader_ = nullptr;
+    MAL::UniformBuffer<Uniforms> uniforms_;
     wgpu::ComputePipeline pipeline_ = nullptr;
 };

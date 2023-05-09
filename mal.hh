@@ -14,7 +14,8 @@ public:
     Buffer() = default;
     Buffer(wgpu::Device &_device,
             WGPUBufferDescriptor _desc)
-        : desc_(_desc)
+        : device_{_device}
+        , desc_(_desc)
         , buffer_{_device.createBuffer(_desc)}
     {
     }
@@ -27,7 +28,12 @@ public:
     size_t size() const {
         return desc_.size;
     }
+    void upload(uint64_t offset, void*data, size_t size) {
+        auto queue = device_.getQueue();
+        queue.writeBuffer(buffer_, offset, data, size);
+    }
 private:
+    wgpu::Device device_ = nullptr;
     wgpu::BufferDescriptor desc_;
     wgpu::Buffer buffer_ = nullptr;
 };
@@ -159,4 +165,42 @@ private:
     ShaderLoader shader_loader_{device_, RESOURCE_DIR "/shaders/common.wsl"};
 };
 
+template<typename U>
+class UniformBuffer
+{
+public:
+    UniformBuffer() = default;
+    UniformBuffer(wgpu::Device _device,
+            wgpu::ShaderStage _visibility)
+        : device_(_device)
+        , buffer_{_device, {
+            .size = sizeof(U),
+            .usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform,
+            .mappedAtCreation = false}}
+        , bgl_{BindGroupBuilder()
+            .add_buffer(buffer_,
+                    _visibility,
+                    wgpu::BufferBindingType::Uniform)
+            .build(_device)}
+    {
+        wgpu::BufferDescriptor bufferDesc;
+        
+    }
+    U& u() {return uniform_;}
+    void upload() {
+        buffer_.upload(0, &uniform_, sizeof(uniform_));
+    }
+    BindGroupWithLayout const&bind_group() const {
+        return bgl_;
+    }
+private:
+    U uniform_;
+    wgpu::Device device_ = nullptr;
+    Buffer buffer_;
+    BindGroupWithLayout bgl_;
+};
+
+struct alignas(32) Vec3f {
+    std::array<float, 3> vec;
+};
 } // namespace MAL
