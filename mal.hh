@@ -4,6 +4,7 @@
 #include <vector>
 #include <filesystem>
 #include <fstream>
+#include <glm/glm.hpp>
 
 // Martin's abstraction layer
 // Give up a lot of flexibility for some convenience.
@@ -200,7 +201,9 @@ private:
     BindGroupWithLayout bgl_;
 };
 
-struct alignas(32) Vec3f {
-    std::array<float, 3> vec;
+struct alignas(16) Vec3f {
+    template<typename ...T>
+    Vec3f(T ...t) : vec{std::forward<T...>(t...)} {}
+    glm::vec3 vec;
 };
 } // namespace MAL

@@ -9,7 +9,7 @@
 class PipelineComputeViewDependent
 {
     struct Uniforms {
-        MAL::Vec3f camera_in_object_space = {0.f,0.f,0.f};
+        MAL::Vec3f camera_in_object_space {0.f};
     };
 public:
     PipelineComputeViewDependent() = default;
@@ -40,11 +40,12 @@ public:
         pipelineDesc.layout = device.createPipelineLayout(pipelineLayoutDesc);
         pipeline_ = device.createComputePipeline(pipelineDesc);
     }
-    void set_camera_in_object_space(std::array<float, 3> const &pos) {
+    void set_camera_in_object_space(glm::vec3 const &pos) {
         uniforms_.u().camera_in_object_space.vec = pos;
-        uniforms_.upload();
+        uniforms_dirty_ = true;
     }
     void run() {
+        maybe_upload_uniforms();
         auto device = context_->device();
         std::cout << "onCompute()" << std::endl;
         // Initialize a command encoder
@@ -86,6 +87,11 @@ public:
         std::cout << "onCompute submitted" << std::endl;
         }
 private:
+    void maybe_upload_uniforms() {
+        if (!uniforms_dirty_) return;
+        uniforms_.upload();
+        uniforms_dirty_ = false;
+    }
 
     std::shared_ptr<MAL::RenderContext> context_;
     std::shared_ptr<TetVertsBuffer> tet_verts_buffer_;
@@ -93,4 +99,5 @@ private:
     wgpu::ShaderModule shader_ = nullptr;
     MAL::UniformBuffer<Uniforms> uniforms_;
     wgpu::ComputePipeline pipeline_ = nullptr;
+    bool uniforms_dirty_ = true;
 };

@@ -526,6 +526,9 @@ void Application::updateViewMatrix() {
 	vec3 position = vec3(cx * cy, sx * cy, sy) * std::exp(-m_cameraState.zoom);
 	m_uniforms.viewMatrix = glm::lookAt(position, vec3(0.0f), vec3(0, 0, 1));
 	m_device.getQueue().writeBuffer(m_uniformBuffer, offsetof(MyUniforms, viewMatrix), &m_uniforms.viewMatrix, sizeof(MyUniforms::viewMatrix));
+
+    // XXX: assume model matrix is constant identity
+    m_pipeline_compute_view_dep.set_camera_in_object_space(position);
 }
 
 void Application::updateDragInertia() {
