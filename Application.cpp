@@ -269,7 +269,7 @@ void Application::buildRenderPipeline() {
 	pipelineDesc.primitive.topology = PrimitiveTopology::TriangleStrip;
 	pipelineDesc.primitive.stripIndexFormat = IndexFormat::Uint16;
 	pipelineDesc.primitive.frontFace = FrontFace::CCW;
-	pipelineDesc.primitive.cullMode = CullMode::Back;
+	pipelineDesc.primitive.cullMode = CullMode::Front; // only draw inner halffaces
 
 	FragmentState fragmentState{};
 	pipelineDesc.fragment = &fragmentState;
