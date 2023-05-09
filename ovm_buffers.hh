@@ -3,12 +3,10 @@
 #include <array>
 #include <webgpu.hpp>
 
-using Vec3 = std::array<float, 3>;
-using Vec4 = std::array<float, 4>;
 using Tet = std::array<uint32_t, 4>;
 
 struct TetMeshData {
-    std::vector<Vec3> vertices;
+    std::vector<MAL::Vec3f> vertices;
     std::vector<Tet> tets;
 };
 
@@ -34,7 +32,7 @@ public:
         return n_tets_;
     }
     private:
-        MAL::StaticVectorBuffer<Vec3> vertices_;
+        MAL::StaticVectorBuffer<MAL::Vec3f> vertices_;
         MAL::StaticVectorBuffer<Tet> tets_;
         MAL::BindGroupWithLayout bind_group_;
         size_t n_tets_;
@@ -45,10 +43,10 @@ inline std::shared_ptr<TetMeshBuffer> make_tet_mesh_buffer(wgpu::Device &_device
             WGPUShaderStageFlags _visibility = wgpu::ShaderStage::Compute)
 {
     TetMeshData data;
-    data.vertices.push_back({.5,.5,.5});
-    data.vertices.push_back({0,0,1});
-    data.vertices.push_back({0,1,0});
-    data.vertices.push_back({0,1,0});
+    data.vertices.emplace_back(0.f,0.f,0.f);
+    data.vertices.emplace_back(1.f,0.f,0.f);
+    data.vertices.emplace_back(0.f,1.f,0.f);
+    data.vertices.emplace_back(0.f,0.f,1.f);
     data.tets.push_back({0,1,2,3});
     return std::make_shared<TetMeshBuffer>(_device, data, _visibility);
 }

@@ -203,7 +203,7 @@ private:
 
 struct alignas(16) Vec3f {
     template<typename ...T>
-    Vec3f(T ...t) : vec{std::forward<T...>(t...)} {}
+    Vec3f(T&&... t) : vec{std::forward<T>(t)...} {}
     glm::vec3 vec;
 };
 } // namespace MAL
