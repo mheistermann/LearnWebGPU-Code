@@ -14,7 +14,8 @@ fn vs_main(
 	var out: VertexOutput;
     let vpos = inbuf_tet_precomp[in_instance_index].pos[in_vertex_index];
     // TODO PERF: pass multiplied matrices
-	out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * uMyUniforms.modelMatrix * vec4<f32>(vpos,1.);
+    out.position_model = uMyUniforms.modelMatrix * vec4<f32>(vpos,1.);
+	out.position = uMyUniforms.projectionMatrix * uMyUniforms.viewMatrix * out.position_model;
     out.tet_id = in_instance_index;
 	return out;
 }

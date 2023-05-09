@@ -5,12 +5,16 @@
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 	// Combine texture and lighting
-	let color = vec3<f32>(0.8, 0.7, 0.6);
     
     let pci = inbuf_tet_precomp[in.tet_id];
     let pcd = inbuf_tet_precomp_viewdep[in.tet_id];
 
 
+    let campos = uMyUniforms.camera_in_object_space;
+    let dist = in.position_model.xyz - campos;
+    let scale = 0.2;
+    let val = clamp(length(dist)*scale, 0., 1.);
+	let color = vec3<f32>(val, 1.-val, 0.);
 	// Gamma-correction
 	let corrected_color = pow(color, vec3<f32>(2.2));
 	return vec4<f32>(corrected_color, uMyUniforms.color.a);

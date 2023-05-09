@@ -220,8 +220,10 @@ void Application::createBuffers()
 
 	// Matrices
 	m_uniforms.modelMatrix = mat4x4(1.0);
-	m_uniforms.viewMatrix = glm::lookAt(vec3(-2.0f, -3.0f, 2.0f), vec3(0.0f), vec3(0, 0, 1));
+    auto campos = vec3(-2.0f, -3.0f, 2.0f);
+	m_uniforms.viewMatrix = glm::lookAt(campos, vec3(0.0f), vec3(0, 0, 1));
 	m_uniforms.projectionMatrix = glm::perspective(45 * PI / 180, 640.0f / 480.0f, 0.01f, 100.0f);
+    m_uniforms.camera_in_object_space = campos;
 
 	queue.writeBuffer(m_uniformBuffer, 0, &m_uniforms, sizeof(MyUniforms));
 	updateViewMatrix();
@@ -263,7 +265,7 @@ void Application::buildRenderPipeline() {
 	pipelineDesc.primitive.topology = PrimitiveTopology::TriangleStrip;
 	pipelineDesc.primitive.stripIndexFormat = IndexFormat::Uint16;
 	pipelineDesc.primitive.frontFace = FrontFace::CCW;
-	pipelineDesc.primitive.cullMode = CullMode::None;
+	pipelineDesc.primitive.cullMode = CullMode::Back;
 
 	FragmentState fragmentState{};
 	pipelineDesc.fragment = &fragmentState;
@@ -526,6 +528,8 @@ void Application::updateViewMatrix() {
 	vec3 position = vec3(cx * cy, sx * cy, sy) * std::exp(-m_cameraState.zoom);
 	m_uniforms.viewMatrix = glm::lookAt(position, vec3(0.0f), vec3(0, 0, 1));
 	m_device.getQueue().writeBuffer(m_uniformBuffer, offsetof(MyUniforms, viewMatrix), &m_uniforms.viewMatrix, sizeof(MyUniforms::viewMatrix));
+    m_uniforms.camera_in_object_space = position;
+	m_device.getQueue().writeBuffer(m_uniformBuffer, offsetof(MyUniforms, camera_in_object_space), &m_uniforms.camera_in_object_space, sizeof(MyUniforms::camera_in_object_space));
 
     // XXX: assume model matrix is constant identity
     m_pipeline_compute_view_dep.set_camera_in_object_space(position);

@@ -83,8 +83,8 @@ private:
 		mat4x4 viewMatrix;
 		mat4x4 modelMatrix;
 		vec4 color;
+        vec3 camera_in_object_space;
 		float time;
-		float _pad[3];
 	};
 	static_assert(sizeof(MyUniforms) % 16 == 0);
 
