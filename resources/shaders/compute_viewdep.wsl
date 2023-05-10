@@ -18,7 +18,7 @@ fn computeViewDependent(
 	outbuf_tet_precomp_viewdep[tet_id].cramer_t_nom = vec4<f32>(
 		dot(pc.baca, o-a),
 		dot(pc.cdbd, o-d),
-		dot(pc.daba, o-a),
-		dot(pc.cada, o-a));
+		dot(pc.cada, o-a),
+		dot(pc.daba, o-a));
 }
 
