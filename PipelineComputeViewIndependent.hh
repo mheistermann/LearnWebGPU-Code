@@ -54,7 +54,7 @@ public:
         computePass.setBindGroup(1, tet_verts_buffer_->bind_group_write().group, 0, nullptr);
         const auto n_tets = tet_mesh_buffer_->n_tets();
         const uint32_t wg_size = 32;
-        const uint32_t wg_count = (n_tets + wg_size-1)/ wg_size;
+        const auto wg_count = static_cast<uint32_t>((n_tets + wg_size-1)/ wg_size);
         computePass.dispatchWorkgroups(wg_count,1,1);
         computePass.end();
 

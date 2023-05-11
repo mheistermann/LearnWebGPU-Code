@@ -461,7 +461,8 @@ void Application::onFrame() {
 	renderPass.setBindGroup(2, m_tet_precompute_viewdep_buffer->bind_group_read().group, 0, nullptr);
 
 	//void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t baseVertex, uint32_t firstInstance);
-	renderPass.drawIndexed(tet_strip.size(), m_tet_mesh_buffer->n_tets(), 0, 0, 0);
+	renderPass.drawIndexed(static_cast<uint32_t>(tet_strip.size()),
+                           static_cast<uint32_t>(m_tet_mesh_buffer->n_tets()), 0, 0, 0);
 
 	updateGui(renderPass);
 
