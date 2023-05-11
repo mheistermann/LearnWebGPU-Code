@@ -438,7 +438,7 @@ void Application::onFrame() {
 
 	RenderPassDepthStencilAttachment depthStencilAttachment;
 	depthStencilAttachment.view = m_depthTextureView;
-	depthStencilAttachment.depthClearValue = 100.0f;
+	depthStencilAttachment.depthClearValue = 1.0f;
 	depthStencilAttachment.depthLoadOp = LoadOp::Clear;
 	depthStencilAttachment.depthStoreOp = StoreOp::Store;
 	depthStencilAttachment.depthReadOnly = false;
