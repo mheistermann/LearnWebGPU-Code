@@ -2,6 +2,22 @@
 @group(1) @binding(0) var<storage,read> inbuf_tet_precomp: array<TetPrecomputeData>;
 @group(2) @binding(0) var<storage,read> inbuf_tet_precomp_viewdep : array<TetPrecomputeDataViewDep>;
 
+struct TRange {
+    first: f32, // t value of first intersection
+    last: f32,  // t value of last intersection
+};
+
+fn update_t_range(_range: TRange, nom: f32, denom: f32) -> TRange {
+    var range = _range;
+    let is_back = nom > 0.;
+    if (is_back) {
+        range.last = min(range.last, nom/denom);
+    } else {
+        range.first = max(range.first, nom/denom);
+    }
+    return range;
+}
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 	// Combine texture and lighting
@@ -16,22 +32,19 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let t_nom = pcd.cramer_t_nom;
     let t_denom = -viewdir * mat4x3<f32>(pci.baca, pci.cdbd, pci.cada, pci.daba);
-    let abc_t = t_nom[0] / dot(pci.baca, -viewdir);
-    let dcb_t = t_nom[1] / dot(pci.cdbd, -viewdir);
-    let acd_t = t_nom[2] / dot(pci.cada, -viewdir);
-    let adb_t = t_nom[3] / dot(pci.daba, -viewdir);
-    
 
-    let is_back = t_nom > vec4<f32>(0.);
+    var t_range : TRange;
+    t_range.first = -1e38;
+    t_range.last = 1e38;
+    for (var i:i32 = 0; i < 4;i++) {
+        t_range = update_t_range(t_range, t_nom[i], t_denom[i]);
+    }
+    let depth = (t_range.last - t_range.first);
 
-    let scale = 0.2;
-    var val = clamp(length(view)*scale, 0., 1.);
-    //val = clamp(abc_t, 0., 1.);
-    val = clamp(pcd.cramer_t_nom[1]*1000., 0., 1.);
-    val = select(0., 1., is_back[1]);
-    val = clamp(dcb_t*.1, 0., 1.);
+    let scale = 10.; //0.001;
+    let val = clamp(depth*scale, 0., 1.);
 
-	var color = vec3<f32>(1.-val, val, 0.);
+	var color = vec3<f32>(1.-val, val, clamp(depth/10., 0., 10.));
     //color = clamp(pcd.cramer_t_nom.xyz*100000., vec3<f32>(0.), vec3<f32>(1.));
 
 	// Gamma-correction
