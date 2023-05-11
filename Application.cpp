@@ -407,7 +407,7 @@ void Application::onFrame() {
 	glfwPollEvents();
 	Queue queue = m_device.getQueue();
 
-	updateDragInertia();
+	//updateDragInertia();
 
     m_pipeline_compute_view_dep.run();
 
