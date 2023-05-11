@@ -21,7 +21,7 @@ fn computeTetVerts(
 	for(var i:i32 = 0; i < 4; i++) {
 		tmp.pos[i] = sc + scale * tmp.pos[i];
 	}
-	let a = scale * tmp.pos[0];
+	let a = tmp.pos[0];
 	let b = tmp.pos[1];
 	let c = tmp.pos[2];
 	let d = tmp.pos[3];
