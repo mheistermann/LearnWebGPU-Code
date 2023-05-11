@@ -24,7 +24,7 @@ fn less(l: Fract, r: Fract) -> bool {
 
 fn update_t_range(_range: TRange, tf: Fract) -> TRange {
     var range = _range;
-    let eps = -1.; // for debug/tests
+    let eps = 0.; // for debug/tests
     if (tf.nom > eps) { // back face?
         if (tf.denom > eps) { // intersection in front of camera>?
             //     tf.n / tf.d <= r.n / r.d
