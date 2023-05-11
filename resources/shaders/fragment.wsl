@@ -2,18 +2,50 @@
 @group(1) @binding(0) var<storage,read> inbuf_tet_precomp: array<TetPrecomputeData>;
 @group(2) @binding(0) var<storage,read> inbuf_tet_precomp_viewdep : array<TetPrecomputeDataViewDep>;
 
-struct TRange {
-    first: f32, // t value of first intersection
-    last: f32,  // t value of last intersection
+struct Fract {
+    nom: f32,
+    denom: f32,
 };
 
-fn update_t_range(_range: TRange, nom: f32, denom: f32) -> TRange {
+fn val(f: Fract) -> f32 {
+    return f.nom / f.denom;
+};
+struct TRange {
+    first: Fract, // t value of first intersection
+    last: Fract,  // t value of last intersection
+};
+
+/// this assumes that sign(left.d) == sign(right.d)!
+fn less(l: Fract, r: Fract) -> bool {
+    // l.n / l.d <= r.n / r.d
+    // l.n * r.d<= r.n * l.d
+    return l.nom * r.denom < r.nom * l.denom;
+}
+
+fn update_t_range(_range: TRange, tf: Fract) -> TRange {
     var range = _range;
-    let is_back = nom > 0.;
-    if (is_back) {
-        range.last = min(range.last, nom/denom);
+    // a / b <= b / c
+
+    if (tf.nom > 0.) { // back face?
+        if (tf.denom > 0.) { // intersection in front of camera>?
+            //     tf.n / tf.d <= r.n / r.d
+            // <=> tf.n * r.d <= r.n * tf.d
+            //let r = range.last;
+            //if(tf.nom * r.denom <= r.nom * tf.denom) {
+            if(less(tf, range.last)) {
+                range.last = tf;
+            }
+        }
     } else {
-        range.first = max(range.first, nom/denom);
+        if (tf.denom < 0.) { // intersection in front of camera?
+            // all denoms will be negative
+            //let r = range.first;
+            //if(tf.nom * r.denom >= r.nom * tf.denom) {
+            if(less(range.first, tf)){
+            //if (less(range.first, tf)) {
+                range.first = tf;
+            }
+        }
     }
     return range;
 }
@@ -34,17 +66,22 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let t_denom = -viewdir * mat4x3<f32>(pci.baca, pci.cdbd, pci.cada, pci.daba);
 
     var t_range : TRange;
-    t_range.first = -1e38;
-    t_range.last = 1e38;
+    t_range.first.nom = 1e38;
+    t_range.first.denom = -1.;
+    t_range.last.nom = 1e38;
+    t_range.last.denom = 1.;
     for (var i:i32 = 0; i < 4;i++) {
-        t_range = update_t_range(t_range, t_nom[i], t_denom[i]);
+        t_range = update_t_range(t_range, Fract(t_nom[i], t_denom[i]));
     }
-    let depth = (t_range.last - t_range.first);
+    let depth = (val(t_range.last) - val(t_range.first));
 
     let scale = 10.; //0.001;
     let val = clamp(depth*scale, 0., 1.);
 
 	var color = vec3<f32>(1.-val, val, clamp(depth/10., 0., 10.));
+    let absorp = 0.5;
+    let val = pow(absorp, val);
+	//var color = vec3<f32>(val, 1., 1.);
     //color = clamp(pcd.cramer_t_nom.xyz*100000., vec3<f32>(0.), vec3<f32>(1.));
 
 	// Gamma-correction

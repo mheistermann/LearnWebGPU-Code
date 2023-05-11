@@ -16,7 +16,7 @@ struct TetPrecomputeDataViewDep {
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
     @location(0) position_model: vec4<f32>,
-    @location(1) tet_id: u32,
+    @location(1) @interpolate(flat) tet_id: u32,
 }
 
 struct MyUniforms {

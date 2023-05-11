@@ -270,6 +270,13 @@ void Application::buildRenderPipeline() {
 	pipelineDesc.primitive.stripIndexFormat = IndexFormat::Uint16;
 	pipelineDesc.primitive.frontFace = FrontFace::CCW;
 	pipelineDesc.primitive.cullMode = CullMode::Front; // only draw inner halffaces
+#if 0 
+    auto unclip = WGPUPrimitiveDepthClipControl {
+        .chain.sType = WGPUSType_PrimitiveDepthClipControl,
+        .chain.next = nullptr,
+        .unclippedDepth = true};
+    pipelineDesc.primitive.nextInChain = &unclip.chain;
+#endif
 
 	FragmentState fragmentState{};
 	pipelineDesc.fragment = &fragmentState;
