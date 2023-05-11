@@ -293,11 +293,6 @@ ENUM(PowerPreference)
 	ENUM_ENTRY(HighPerformance, 0x00000002)
 	ENUM_ENTRY(Force32, 0x7FFFFFFF)
 END
-ENUM(PredefinedColorSpace)
-	ENUM_ENTRY(Undefined, 0x00000000)
-	ENUM_ENTRY(Srgb, 0x00000001)
-	ENUM_ENTRY(Force32, 0x7FFFFFFF)
-END
 ENUM(PresentMode)
 	ENUM_ENTRY(Immediate, 0x00000000)
 	ENUM_ENTRY(Mailbox, 0x00000001)

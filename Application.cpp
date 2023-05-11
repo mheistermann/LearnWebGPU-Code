@@ -128,6 +128,7 @@ bool Application::onInit() {
 	requiredLimits.limits.maxVertexAttributes = 4;
 	requiredLimits.limits.maxVertexBuffers = 2;
 	requiredLimits.limits.maxBindGroups = 3;
+	requiredLimits.limits.maxBufferSize = 200000; // TODO
 	requiredLimits.limits.maxUniformBuffersPerShaderStage = 3;
 	requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4 * sizeof(float);
 	requiredLimits.limits.maxStorageBufferBindingSize =1234; // TODO: set properly
@@ -138,6 +139,13 @@ bool Application::onInit() {
 	requiredLimits.limits.maxComputeWorkgroupSizeZ = 1;
 	requiredLimits.limits.maxComputeInvocationsPerWorkgroup = 32;
 	requiredLimits.limits.maxComputeWorkgroupsPerDimension = 1234; // TODO
+	requiredLimits.limits.maxTextureDimension2D = 2048;
+	requiredLimits.limits.maxTextureArrayLayers = 1;
+	requiredLimits.limits.maxInterStageShaderVariables = 10;
+	requiredLimits.limits.maxInterStageShaderComponents = 10;
+	requiredLimits.limits.maxSampledTexturesPerShaderStage = 1;
+	requiredLimits.limits.maxSamplersPerShaderStage = 1;
+	requiredLimits.limits.maxVertexBufferArrayStride = 20;
 
 	requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
 	requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minStorageBufferOffsetAlignment;
