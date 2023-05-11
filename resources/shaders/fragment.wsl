@@ -20,6 +20,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let dcb_t = t_nom[1] / dot(pci.cdbd, -viewdir);
     let acd_t = t_nom[2] / dot(pci.cada, -viewdir);
     let adb_t = t_nom[3] / dot(pci.daba, -viewdir);
+    
 
     let is_back = t_nom > vec4<f32>(0.);
 

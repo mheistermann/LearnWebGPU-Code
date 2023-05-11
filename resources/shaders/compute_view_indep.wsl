@@ -15,7 +15,13 @@ fn computeTetVerts(
 		tmp.pos[i] = vec3<f32>(inbuf_vpos[vids[i]]);
 	}
 
-	let a = tmp.pos[0];
+    let center = .25 * (tmp.pos[0] + tmp.pos[1] + tmp.pos[2] + tmp.pos[3]);
+    let scale = .8;
+    let sc= (1.-scale) * center;
+	for(var i:i32 = 0; i < 4; i++) {
+		tmp.pos[i] = sc + scale * tmp.pos[i];
+	}
+	let a = scale * tmp.pos[0];
 	let b = tmp.pos[1];
 	let c = tmp.pos[2];
 	let d = tmp.pos[3];

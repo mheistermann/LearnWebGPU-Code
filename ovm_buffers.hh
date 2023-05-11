@@ -47,7 +47,9 @@ inline std::shared_ptr<TetMeshBuffer> make_tet_mesh_buffer(wgpu::Device &_device
     data.vertices.emplace_back(1.f,0.f,0.f);
     data.vertices.emplace_back(0.f,1.f,0.f);
     data.vertices.emplace_back(0.f,0.f,1.f);
+    data.vertices.emplace_back(1.f,1.f,1.f);
     data.tets.push_back({0,1,2,3});
+    data.tets.push_back({1,2,3,4});
     return std::make_shared<TetMeshBuffer>(_device, data, _visibility);
 }
 
