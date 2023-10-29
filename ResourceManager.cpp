@@ -83,7 +83,7 @@ bool ResourceManager::loadGeometryFromObj(const path& path, std::vector<VertexAt
 		size_t offset = vertexData.size();
 		vertexData.resize(offset + shape.mesh.indices.size());
 
-		for (int i = 0; i < vertexData.size(); ++i) {
+		for (size_t i = 0; i < vertexData.size(); ++i) {
 			const tinyobj::index_t& idx = shape.mesh.indices[i];
 
 			vertexData[offset + i].position = {
@@ -120,7 +120,7 @@ bool ResourceManager::loadGeometryFromObj(const path& path, std::vector<VertexAt
 void ResourceManager::computeTextureFrameAttributes(std::vector<VertexAttributes>& vertexData) {
 	size_t triangleCount = vertexData.size() / 3;
 	// We compute the local texture frame per triangle
-	for (int t = 0; t < triangleCount; ++t) {
+	for (size_t t = 0; t < triangleCount; ++t) {
 		VertexAttributes* v = &vertexData[3 * t];
 
 		// Formulas from http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-13-normal-mapping/
